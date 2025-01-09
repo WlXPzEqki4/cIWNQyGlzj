@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Concept Network Test</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <!-- Dependencies -->
+  <script
+    crossorigin
+    src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.development.js">
+  </script>
+  <script
+    crossorigin
+    src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.development.js">
+  </script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+
+  <style>
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      font-family: Arial, sans-serif;
+    }
+    .viz-container {
+      background: white;
+      padding: 0;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+      width: 100%;
+      height: 600px; /* Ensures the container has a fixed height */
+    }
+    svg {
+      width: 100%;
+      height: 100%; /* Matches the height of the parent container */
+      display: block; /* Ensures no extra margins */
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useRef, useEffect } = React;
+
+    function ConceptNetwork2D() {
+      const svgRef = useRef();
+
+      const nodes = [
+        { id: "COCAINE", group: 1, weight: 0.551048, radius: 40 },
+        { id: "SEIZURE", group: 1, weight: 0.364581, radius: 35 },
+        { id: "INVESTIGATION", group: 2, weight: 0.424509, radius: 30 },
+        { id: "QUANTITY", group: 3, weight: 0.383739, radius: 30 },
+        { id: "METHOD", group: 4, weight: 0.344153, radius: 25 },
+        { id: "LOCATION", group: 5, weight: 0.429805, radius: 25 },
+        { id: "tons", group: 3, weight: 0.2, radius: 15 },
+        { id: "kilos", group: 3, weight: 0.2, radius: 15 },
+        { id: "hidden", group: 4, weight: 0.2, radius: 15 },
+        { id: "load", group: 4, weight: 0.2, radius: 15 },
+        { id: "europe", group: 5, weight: 0.2, radius: 15 }
+      ];
+
+      const links = [
+        { source: "COCAINE", target: "SEIZURE", value: 5 },
+        { source: "COCAINE", target: "QUANTITY", value: 4 },
+        { source: "COCAINE", target: "METHOD", value: 3 },
+        { source: "COCAINE", target: "LOCATION", value: 3 },
+        { source: "COCAINE", target: "INVESTIGATION", value: 4 }, /* Added connection */
+        { source: "QUANTITY", target: "tons", value: 2 },
+        { source: "QUANTITY", target: "kilos", value: 2 },
+        { source: "METHOD", target: "hidden", value: 2 },
+        { source: "METHOD", target: "load", value: 2 },
+        { source: "LOCATION", target: "europe", value: 2 }
+      ];
+
+      useEffect(() => {
+        const width = 800;
+        const height = 600;
+
+        d3.select(svgRef.current).selectAll("*").remove();
+
+        const svg = d3.select(svgRef.current)
+          .attr("width", "100%")
+          .attr("height", "100%");
+
+        const zoom = d3.zoom()
+          .scaleExtent([0.5, 5])
+          .on("zoom", (event) => {
+            g.attr("transform", event.transform);
+          });
+
+        svg.call(zoom);
+
+        const g = svg.append("g")
+          .attr("transform", "scale(0.8) translate(100,100)");
+
+        const simulation = d3.forceSimulation(nodes)
+          .force("link", d3.forceLink(links).id(d => d.id).distance(150)) /* Adjusted link distance */
+          .force("charge", d3.forceManyBody().strength(-300)) /* Reduced repulsion strength */
+          .force("center", d3.forceCenter(width / 2, height / 2));
+
+        const link = g.append("g")
+          .selectAll("line")
+          .data(links)
+          .join("line")
+          .attr("stroke", "#999")
+          .attr("stroke-opacity", 0.6)
+          .attr("stroke-width", d => Math.sqrt(d.value));
+
+        const color = d3.scaleOrdinal(d3.schemeCategory10);
+
+        function drag(simulation) {
+          function dragstarted(event) {
+            if (!event.active) simulation.alphaTarget(0.3).restart();
+            event.subject.fx = event.subject.x;
+            event.subject.fy = event.subject.y;
+          }
+          function dragged(event) {
+            event.subject.fx = event.x;
+            event.subject.fy = event.y;
+          }
+          function dragended(event) {
+            if (!event.active) simulation.alphaTarget(0);
+            event.subject.fx = null;
+            event.subject.fy = null;
+          }
+          return d3.drag()
+            .on("start", dragstarted)
+            .on("drag", dragged)
+            .on("end", dragended);
+        }
+
+        const node = g.append("g")
+          .selectAll("g")
+          .data(nodes)
+          .join("g")
+          .call(drag(simulation));
+
+        node.append("circle")
+          .attr("r", d => d.radius)
+          .attr("fill", d => color(d.group))
+          .attr("fill-opacity", 0.7);
+
+        node.append("text")
+          .text(d => d.id)
+          .attr("x", 0)
+          .attr("y", d => d.radius + 12)
+          .attr("text-anchor", "middle")
+          .attr("fill", "#333")
+          .style("font-size", "12px");
+
+        node.append("title")
+          .text(d => `${d.id}\nWeight: ${d.weight}`);
+
+        simulation.on("tick", () => {
+          link
+            .attr("x1", d => d.source.x)
+            .attr("y1", d => d.source.y)
+            .attr("x2", d => d.target.x)
+            .attr("y2", d => d.target.y);
+
+          node
+            .attr("transform", d => `translate(${d.x},${d.y})`);
+        });
+      }, []);
+
+      return (
+        <div className="viz-container">
+          <svg ref={svgRef}></svg>
+        </div>
+      );
+    }
+
+    function App() {
+      return (
+        <div className="container">
+          <h1>Narrative Concept Visualisations</h1>
+          <ConceptNetwork2D />
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>

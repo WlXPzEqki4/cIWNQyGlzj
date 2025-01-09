@@ -1,0 +1,1263 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Daily Route Visualization</title>
+<meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+<link href="https://api.mapbox.com/mapbox-gl-js/v3.8.0/mapbox-gl.css" rel="stylesheet">
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.8.0/mapbox-gl.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+<script src="https://unpkg.com/h3-js@4.1.0/dist/h3-js.umd.js"></script>
+<script src='https://unpkg.com/@turf/turf@6/turf.min.js'></script>
+<style>
+    body { margin: 0; padding: 0; }
+    #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+    .map-overlay {
+        font: 12px/20px 'Helvetica Neue', Arial, Helvetica, sans-serif;
+        position: absolute;
+        width: 250px;
+        top: 0;
+        left: 0;
+        padding: 10px;
+    }
+    .map-overlay .map-overlay-inner {
+        background-color: #fff;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        border-radius: 3px;
+        padding: 10px;
+        margin-bottom: 10px;
+    }
+    .map-overlay-inner select {
+        width: 100%;
+    }
+    .marker-time {
+        background-color: white;
+        border: 2px solid #666;
+        border-radius: 4px;
+        padding: 4px 8px;
+        font-size: 14px;
+        font-weight: bold;
+        pointer-events: none;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        min-width: 60px;
+        text-align: center;
+    }
+    .slider-container {
+        margin-top: 10px;
+        display: none;
+    }
+    .slider-container.visible {
+        display: block;
+    }
+    .slider-label {
+        display: block;
+        margin-bottom: 5px;
+    }
+    .slider-value {
+        display: inline-block;
+        width: 50px;
+        text-align: right;
+    }
+    .btn {
+        padding: 5px 10px;
+        margin: 5px;
+        cursor: pointer;
+        background-color: #4CAF50;
+        color: white;
+        border: none;
+        border-radius: 3px;
+    }
+    .btn:hover {
+        background-color: #45a049;
+    }
+
+    /* Add these to your existing CSS styles */
+    .mapboxgl-popup {
+        font-size: 18px;  /* Increase font size */
+    }
+
+    .mapboxgl-popup-content {
+        padding: 15px 20px;  /* More padding around the content */
+        min-width: 150px;   /* Minimum width */
+        text-align: center;  /* Center the text */
+        background-color: rgba(255, 255, 255, 0.95); /* Slightly transparent background */
+        border-radius: 8px;  /* Rounded corners */
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* More pronounced shadow */
+        font-weight: bold;   /* Make text bold */
+    }
+
+    .events-overlay {
+        font: 12px/20px 'Helvetica Neue', Arial, Helvetica, sans-serif;
+        position: absolute;
+        width: 300px;
+        top: 0;
+        right: 0;
+        padding: 10px;
+        max-height: 100vh;
+        overflow: hidden;
+        pointer-events: none;
+    }
+
+    .events-overlay-inner {
+        background-color: rgba(255, 255, 255, 0.95);
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        border-radius: 3px;
+        padding: 10px;
+        pointer-events: auto;
+    }
+
+    .events-table-container {
+        max-height: 80vh;
+        overflow-y: auto;
+    }
+
+    #eventsTable {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    #eventsTable th,
+    #eventsTable td {
+        padding: 8px;
+        text-align: left;
+        border-bottom: 1px solid #ddd;
+    }
+
+    #eventsTable th {
+        background-color: #f5f5f5;
+        position: sticky;
+        top: 0;
+    }
+
+    #eventsTable tr.current-event {
+        background-color: #fff3b3;
+        transition: background-color 0.3s ease;
+    }
+
+    #eventsTable tr:hover {
+        background-color: #f0f0f0;
+    }
+
+
+
+
+
+
+
+
+
+
+
+</style>
+</head>
+<body>
+<div id="map"></div>
+
+<div class="map-overlay">
+    <div class="map-overlay-inner">
+        <label>Select Date</label>
+        <select id="dateSelect"></select>
+        
+        <div style="margin-top: 10px;">
+            <label style="display: block; margin-bottom: 5px;">Map Style:</label>
+            <select id="mapStyle" style="margin-bottom: 10px;">
+                <option value="mapbox://styles/mapbox/streets-v12">Streets</option>
+                <option value="mapbox://styles/mapbox/satellite-v9">Satellite</option>
+                <option value="mapbox://styles/mapbox/satellite-streets-v12">Satellite with Streets</option>
+                <option value="mapbox://styles/mapbox/light-v11">Light</option>
+                <option value="mapbox://styles/mapbox/dark-v11">Dark</option>
+                <option value="mapbox://styles/mapbox/navigation-day-v1">Navigation Day</option>
+                <option value="mapbox://styles/mapbox/navigation-night-v1">Navigation Night</option>
+            </select>
+
+            <label style="display: block; margin-bottom: 5px;">Display Options:</label>
+            <div>
+                <input type="checkbox" id="showTimeMarkers" checked>
+                <label for="showTimeMarkers">Show Time Labels</label>
+            </div>
+            <div>
+                <input type="checkbox" id="showStartEnd" checked>
+                <label for="showStartEnd">Show Start/End Points</label>
+            </div>
+            <div>
+                <input type="checkbox" id="show3DBuildings">
+                <label for="show3DBuildings">Show 3D Buildings</label>
+            </div>
+            <div>
+                <input type="checkbox" id="showHeatmap">
+                <label for="showHeatmap">Show Heatmap</label>
+            </div>
+            <div>
+                <input type="checkbox" id="showHexagons">
+                <label for="showHexagons">Show 3D Hexagons</label>
+            </div>
+        </div>
+
+        <div id="hexagonControls" class="slider-container">
+            <div>
+                <label class="slider-label">
+                    Hexagon Resolution: <span id="hexResValue" class="slider-value">9</span>
+                </label>
+                <input type="range" id="hexagonResolution" min="8" max="12" value="9" step="1">
+            </div>
+            <div>
+                <label class="slider-label">
+                    Hexagon Height: <span id="hexHeightValue" class="slider-value">500</span>m
+                </label>
+                <input type="range" id="hexagonHeight" min="100" max="2000" value="500" step="100">
+            </div>
+        </div>
+
+        <div style="margin-top: 10px;">
+            <label style="display: block; margin-bottom: 5px;">Route Animation:</label>
+            <button id="playRoute" class="btn">Play Route</button>
+            <button id="pauseRoute" class="btn" style="display: none;">Pause</button>
+            <button id="stopRoute" class="btn" style="display: none;">Stop</button>
+            <div style="margin-top: 5px;">
+                <label for="animationSpeed">Speed:</label>
+                <input type="range" id="animationSpeed" min="1" max="10" value="5" step="1">
+                <span id="speedValue">5x</span>
+            </div>
+        </div>
+
+
+    </div>
+</div>
+
+
+
+
+
+<div class="events-overlay">
+    <div class="events-overlay-inner">
+        <h3>Events Timeline</h3>
+        <div class="events-table-container">
+            <table id="eventsTable">
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Location</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Events will be populated here -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+
+
+
+
+
+<script>
+    mapboxgl.accessToken = 'pk.eyJ1IjoiamNkZW50b24yMDUxIiwiYSI6ImNtMzVkZXJudTA5ejkya3B5NDU4Z2MyeHQifQ.aUk4eH5k3JC45Foxcbe2qQ';
+    
+    // Initialize map
+    const map = new mapboxgl.Map({
+        container: 'map',
+        style: 'mapbox://styles/mapbox/streets-v12',
+        center: [55.38279, 25.08532],
+        zoom: 15,
+        pitch: 0,
+        bearing: 0
+    });
+    
+    // Store markers and layers globally
+    let timeMarkers = [];
+    let startEndMarkers = [];
+    let heatmapLayer = null;
+    let hexagonLayer = null;
+    let animationMarker = null;
+    let animationFrameId = null;
+    let animationPaused = false;
+    let lastProgress = 0;
+    let currentCoordinates = [];
+    let currentTimestamps = [];
+    
+    // Hexagon configuration
+    let hexagonConfig = {
+        resolution: 9,
+        maxHeight: 1000
+    };
+    
+
+
+    // Load and process CSV data
+    async function loadCSV() {
+        try {
+            console.log('Attempting to load CSV file...');
+            const response = await fetch('new_df.csv');
+            if (!response.ok) {
+                throw new Error(`Failed to load CSV file: ${response.status} ${response.statusText}`);
+            }
+            const text = await response.text();
+            console.log('CSV text loaded:', text.substring(0, 100) + '...'); // Show first 100 chars
+
+            return new Promise((resolve, reject) => {
+                Papa.parse(text, {
+                    header: true,
+                    complete: function(results) {
+                        console.log('Parsed CSV data:', results.data.length, 'rows');
+                        resolve(results.data);
+                    },
+                    error: function(error) {
+                        console.error('Papa Parse error:', error);
+                        reject(error);
+                    }
+                });
+            });
+        } catch (error) {
+            console.error('Error in loadCSV:', error);
+            throw error;
+        }
+    }
+
+
+
+    function animateRoute(coordinates, timestamps) {
+    if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+        animationFrameId = null;
+    }
+    
+    if (animationMarker && !animationPaused) {
+        animationMarker.remove();
+        animationMarker = null;
+    }
+
+    // Create popup if it doesn't exist
+    const popup = animationMarker?.getPopup() || new mapboxgl.Popup({
+        closeButton: false,
+        closeOnClick: false
+    });
+
+    // Create or reuse marker
+    if (!animationMarker) {
+        animationMarker = new mapboxgl.Marker({
+            color: '#FFD700',
+            scale: 1.2
+        })
+        .setLngLat(coordinates[0])
+        .setPopup(popup)
+        .addTo(map);
+
+        // Show initial timestamp
+        popup.setHTML(`
+            <div style="text-align: center;">
+                <div>Current: ${timestamps[0]}</div>
+                <div style="margin-top: 5px; border-top: 1px solid #ccc; padding-top: 5px;">Next: ${timestamps[1] || timestamps[0]}</div>
+            </div>
+        `)
+        .addTo(map);
+        
+        // Initialize first highlight
+        updateEventHighlight(0);
+    }
+
+    const line = turf.lineString(coordinates);
+    const totalDistance = turf.length(line, {units: 'kilometers'});
+    
+    const speedFactor = parseFloat(document.getElementById('animationSpeed').value);
+    const duration = Math.max(5000, (totalDistance * 5000) / speedFactor);
+    let startTime = null;
+
+    function animate(currentTime) {
+        if (animationPaused) {
+            return;
+        }
+
+        if (!startTime) startTime = currentTime - (lastProgress * duration);
+        const elapsed = currentTime - startTime;
+        const progress = elapsed / duration;
+        lastProgress = progress;
+
+        if (progress >= 1) {
+            if (animationMarker) {
+                animationMarker.remove();
+                animationMarker = null;
+            }
+            document.getElementById('playRoute').style.display = 'block';
+            document.getElementById('pauseRoute').style.display = 'none';
+            document.getElementById('stopRoute').style.display = 'none';
+            lastProgress = 0;
+            return;
+        }
+
+        // Calculate current position along the route
+        const along = turf.along(line, totalDistance * progress, {units: 'kilometers'});
+        const currentPos = along.geometry.coordinates;
+
+        // Find the closest segment to our current position
+        let minDist = Infinity;
+        let closestIndex = 0;
+
+        for (let i = 0; i < coordinates.length - 1; i++) {
+            const segmentStart = coordinates[i];
+            const segmentEnd = coordinates[i + 1];
+            
+            // Calculate distance from current position to this segment
+            const distToSegment = turf.pointToLineDistance(
+                turf.point(currentPos),
+                turf.lineString([segmentStart, segmentEnd])
+            );
+            
+            if (distToSegment < minDist) {
+                minDist = distToSegment;
+                closestIndex = i;
+            }
+        }
+
+        // Update marker position and popup
+        if (animationMarker) {
+            animationMarker.setLngLat(currentPos);
+            
+            // Get the appropriate timestamps
+            const currentTimestamp = timestamps[closestIndex];
+            const nextTimestamp = timestamps[closestIndex + 1] || timestamps[closestIndex];
+
+            popup.setHTML(`
+                <div style="text-align: center;">
+                    <div>Current: ${currentTimestamp}</div>
+                    <div style="margin-top: 5px; border-top: 1px solid #ccc; padding-top: 5px;">Next: ${nextTimestamp}</div>
+                </div>
+            `);
+
+            // Update the event highlight
+            updateEventHighlight(closestIndex);
+        }
+
+        animationFrameId = requestAnimationFrame(animate);
+    }
+
+    animationFrameId = requestAnimationFrame(animate);
+}
+
+
+
+
+function populateEventsTable(data, selectedDate) {
+    console.log('Populating events table for date:', selectedDate);
+    console.log('Data length:', data.length);
+    
+    const tableBody = document.querySelector('#eventsTable tbody');
+    if (!tableBody) {
+        console.error('Events table body not found');
+        return;
+    }
+    
+    tableBody.innerHTML = '';
+
+    const dayData = data
+        .filter(row => row.date === selectedDate)
+        .sort((a, b) => {
+            const timeA = new Date(`${a.date} ${a.TIMESTAMP.split(' ')[1]}`);
+            const timeB = new Date(`${b.date} ${b.TIMESTAMP.split(' ')[1]}`);
+            return timeA - timeB;
+        });
+
+    console.log('Filtered data length:', dayData.length);
+
+    dayData.forEach((row, index) => {
+        const tr = document.createElement('tr');
+        tr.id = `event-${index}`;
+        
+        const timeCell = document.createElement('td');
+        timeCell.textContent = row.TIMESTAMP.split(' ')[1];
+        
+        const locationCell = document.createElement('td');
+        locationCell.textContent = `${parseFloat(row.latitude).toFixed(4)}, ${parseFloat(row.longitude).toFixed(4)}`;
+        
+        tr.appendChild(timeCell);
+        tr.appendChild(locationCell);
+        tableBody.appendChild(tr);
+    });
+}
+
+
+
+function updateEventHighlight(closestIndex) {
+    // Remove highlight from all rows
+    document.querySelectorAll('#eventsTable tr').forEach(row => {
+        row.classList.remove('current-event');
+    });
+
+    // Add highlight to current row
+    const currentRow = document.getElementById(`event-${closestIndex}`);
+    if (currentRow) {
+        currentRow.classList.add('current-event');
+        // Scroll row into view if needed
+        currentRow.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    // Clear existing markers and layers
+    function clearMarkers() {
+        timeMarkers.forEach(marker => marker.remove());
+        timeMarkers = [];
+        startEndMarkers.forEach(marker => marker.remove());
+        startEndMarkers = [];
+    }
+    
+
+    // Add this new function
+    function recreateMarkers(data, selectedDate) {
+        // Clear existing markers first
+        clearMarkers();
+        
+        const dayData = data
+            .filter(row => row.date === selectedDate)
+            .sort((a, b) => {
+                const timeA = new Date(`${a.date} ${a.TIMESTAMP.split(' ')[1]}`);
+                const timeB = new Date(`${b.date} ${b.TIMESTAMP.split(' ')[1]}`);
+                return timeA - timeB;
+            });
+
+        const coordinates = [];
+        const timestamps = [];
+
+        dayData.forEach(row => {
+            const lng = parseFloat(row.longitude);
+            const lat = parseFloat(row.latitude);
+            const time = row.TIMESTAMP.split(' ')[1];
+
+            coordinates.push([lng, lat]);
+            timestamps.push(time);
+
+            if (document.getElementById('showTimeMarkers').checked) {
+                const marker = new mapboxgl.Marker({
+                    element: createTimeMarker(time),
+                    anchor: 'bottom'
+                })
+                    .setLngLat([lng, lat])
+                    .addTo(map);
+                
+                timeMarkers.push(marker);
+            }
+        });
+
+        if (document.getElementById('showStartEnd').checked) {
+            createStartEndMarkers(coordinates, timestamps);
+        }
+
+        return { coordinates, timestamps };
+    }
+
+
+
+
+
+    // Create time marker element
+    function createTimeMarker(time) {
+        const el = document.createElement('div');
+        el.className = 'marker-time';
+        el.textContent = time;
+        return el;
+    }
+    
+    // Function to handle 3D buildings layer
+    function toggle3DBuildings(show) {
+        if (show) {
+            if (!map.getLayer('3d-buildings')) {
+                map.addLayer({
+                    'id': '3d-buildings',
+                    'source': 'composite',
+                    'source-layer': 'building',
+                    'filter': ['==', 'extrude', 'true'],
+                    'type': 'fill-extrusion',
+                    'minzoom': 15,
+                    'paint': {
+                        'fill-extrusion-color': '#aaa',
+                        'fill-extrusion-height': [
+                            'interpolate',
+                            ['linear'],
+                            ['zoom'],
+                            15,
+                            0,
+                            15.05,
+                            ['get', 'height']
+                        ],
+                        'fill-extrusion-base': [
+                            'interpolate',
+                            ['linear'],
+                            ['zoom'],
+                            15,
+                            0,
+                            15.05,
+                            ['get', 'min_height']
+                        ],
+                        'fill-extrusion-opacity': 0.6
+                    }
+                });
+            }
+        } else {
+            if (map.getLayer('3d-buildings')) {
+                map.removeLayer('3d-buildings');
+            }
+        }
+    }
+    
+    // Function to create heatmap layer
+    function createHeatmapLayer(coordinates) {
+        if (map.getLayer('heatmap-layer')) {
+            map.removeLayer('heatmap-layer');
+        }
+        if (map.getSource('heatmap-source')) {
+            map.removeSource('heatmap-source');
+        }
+    
+        map.addSource('heatmap-source', {
+            'type': 'geojson',
+            'data': {
+                'type': 'FeatureCollection',
+                'features': coordinates.map(coord => ({
+                    'type': 'Feature',
+                    'properties': { 'intensity': 1 },
+                    'geometry': {
+                        'type': 'Point',
+                        'coordinates': coord
+                    }
+                }))
+            }
+        });
+    
+        map.addLayer({
+            'id': 'heatmap-layer',
+            'type': 'heatmap',
+            'source': 'heatmap-source',
+            'paint': {
+                'heatmap-weight': 1,
+                'heatmap-intensity': 1,
+                'heatmap-color': [
+                    'interpolate',
+                    ['linear'],
+                    ['heatmap-density'],
+                    0, 'rgba(0, 0, 255, 0)',
+                    0.2, 'rgba(0, 0, 255, 0.5)',
+                    0.4, 'rgba(0, 255, 255, 0.5)',
+                    0.6, 'rgba(0, 255, 0, 0.5)',
+                    0.8, 'rgba(255, 255, 0, 0.5)',
+                    1, 'rgba(255, 0, 0, 0.5)'
+                ],
+                'heatmap-radius': 30,
+                'heatmap-opacity': 0.7
+            }
+        });
+    }
+
+
+// Function to generate hex grid from points
+function generateHexGrid(coordinates) {
+        if (!h3) {
+            console.error('H3 library not loaded');
+            return [];
+        }
+
+        const hexagons = {};
+        
+        coordinates.forEach(coord => {
+            try {
+                const hex = h3.latLngToCell(coord[1], coord[0], hexagonConfig.resolution);
+                hexagons[hex] = (hexagons[hex] || 0) + 1;
+            } catch (e) {
+                console.error('Error generating hexagon:', e);
+            }
+        });
+
+        const features = Object.entries(hexagons).map(([hexId, count]) => {
+            try {
+                const vertices = h3.cellToBoundary(hexId);
+                const coordinates = vertices.map(([lat, lng]) => [lng, lat]);
+                coordinates.push(coordinates[0]); // Close the polygon
+
+                return {
+                    type: 'Feature',
+                    properties: {
+                        count: count,
+                        hexId: hexId
+                    },
+                    geometry: {
+                        type: 'Polygon',
+                        coordinates: [coordinates]
+                    }
+                };
+            } catch (e) {
+                console.error('Error generating feature:', e);
+                return null;
+            }
+        }).filter(feature => feature !== null);
+
+        return features;
+    }
+    
+    function createHexagons(coordinates) {
+        if (!coordinates.length) return;
+
+        if (map.getLayer('hexagons')) {
+            map.removeLayer('hexagons');
+        }
+        if (map.getSource('hexagons-source')) {
+            map.removeSource('hexagons-source');
+        }
+
+        const hexFeatures = generateHexGrid(coordinates);
+        if (!hexFeatures.length) return;
+
+        const maxCount = Math.max(...hexFeatures.map(f => f.properties.count));
+
+        map.addSource('hexagons-source', {
+            type: 'geojson',
+            data: {
+                type: 'FeatureCollection',
+                features: hexFeatures
+            }
+        });
+
+        map.addLayer({
+            'id': 'hexagons',
+            'type': 'fill-extrusion',
+            'source': 'hexagons-source',
+            'paint': {
+                'fill-extrusion-color': [
+                    'interpolate',
+                    ['linear'],
+                    ['get', 'count'],
+                    1, '#0000FF',
+                    Math.ceil(maxCount / 2), '#00FF00',
+                    maxCount, '#FF0000'
+                ],
+                'fill-extrusion-height': [
+                    'interpolate',
+                    ['linear'],
+                    ['get', 'count'],
+                    1, hexagonConfig.maxHeight / maxCount,
+                    maxCount, hexagonConfig.maxHeight
+                ],
+                'fill-extrusion-base': 0,
+                'fill-extrusion-opacity': 0.7
+            }
+        });
+
+        hexagonLayer = true;
+    }
+    
+
+// Function to create start/end markers
+function createStartEndMarkers(coordinates, timestamps) {
+        startEndMarkers.forEach(marker => marker.remove());
+        startEndMarkers = [];
+    
+        if (coordinates.length < 2) return;
+    
+        const startMarker = new mapboxgl.Marker({
+            color: '#FF0000',
+            scale: 2
+        })
+            .setLngLat(coordinates[0])
+            .setPopup(new mapboxgl.Popup().setText(`Start: ${timestamps[0]}`))
+            .addTo(map);
+    
+        const endMarker = new mapboxgl.Marker({
+            color: '#0000FF',
+            scale: 2
+        })
+            .setLngLat(coordinates[coordinates.length - 1])
+            .setPopup(new mapboxgl.Popup().setText(`End: ${timestamps[timestamps.length - 1]}`))
+            .addTo(map);
+    
+        startEndMarkers.push(startMarker, endMarker);
+    }
+    
+
+
+    function updateRoute(data, selectedDate) {
+    clearMarkers();
+
+    const dayData = data
+        .filter(row => row.date === selectedDate)
+        .sort((a, b) => {
+            const timeA = new Date(`${a.date} ${a.TIMESTAMP.split(' ')[1]}`);
+            const timeB = new Date(`${b.date} ${b.TIMESTAMP.split(' ')[1]}`);
+            return timeA - timeB;
+        });
+
+    const coordinates = [];
+    const timestamps = [];
+
+    dayData.forEach(row => {
+        const lng = parseFloat(row.longitude);
+        const lat = parseFloat(row.latitude);
+        const time = row.TIMESTAMP.split(' ')[1];
+
+        coordinates.push([lng, lat]);
+        timestamps.push(time);
+
+        if (document.getElementById('showTimeMarkers').checked) {
+            const marker = new mapboxgl.Marker({
+                element: createTimeMarker(time),
+                anchor: 'bottom'
+            })
+                .setLngLat([lng, lat])
+                .addTo(map);
+            
+            timeMarkers.push(marker);
+        }
+    });
+
+    // Populate events table
+    populateEventsTable(data, selectedDate);
+
+    if (document.getElementById('showStartEnd').checked) {
+        createStartEndMarkers(coordinates, timestamps);
+    }
+
+    if (document.getElementById('showHeatmap').checked) {
+        createHeatmapLayer(coordinates);
+    }
+
+    if (document.getElementById('showHexagons').checked) {
+        createHexagons(coordinates);
+    }
+
+    // Wait for map style to be loaded before adding/updating the route
+    if (!map.isStyleLoaded()) {
+        map.once('style.load', () => addOrUpdateRoute(coordinates));
+    } else {
+        addOrUpdateRoute(coordinates);
+    }
+
+    // Fit bounds
+    if (coordinates.length > 0) {
+        const bounds = coordinates.reduce((bounds, coord) => {
+            return bounds.extend(coord);
+        }, new mapboxgl.LngLatBounds(coordinates[0], coordinates[0]));
+
+        map.fitBounds(bounds, {
+            padding: 50
+        });
+    }
+}
+
+// Helper function to add or update the route
+function addOrUpdateRoute(coordinates) {
+    // Remove existing route if it exists
+    if (map.getLayer('route')) {
+        map.removeLayer('route');
+    }
+    if (map.getSource('route')) {
+        map.removeSource('route');
+    }
+
+    // Add new route source and layer
+    map.addSource('route', {
+        type: 'geojson',
+        lineMetrics: true,
+        data: {
+            type: 'Feature',
+            properties: {},
+            geometry: {
+                type: 'LineString',
+                coordinates: coordinates
+            }
+        }
+    });
+
+    map.addLayer({
+        id: 'route',
+        type: 'line',
+        source: 'route',
+        layout: {
+            'line-join': 'round',
+            'line-cap': 'round'
+        },
+        paint: {
+            'line-width': 6,
+            'line-gradient': [
+                'interpolate',
+                ['linear'],
+                ['line-progress'],
+                0, '#FF0000',
+                1, '#0000FF'
+            ]
+        }
+    });
+}
+    
+
+
+
+
+
+
+
+    // Process data and populate dropdown
+        async function initializeData() {
+        console.log('Initializing data...');
+        const data = await loadCSV();
+        
+        if (!data || data.length === 0) {
+            console.error('No data loaded');
+            return;
+        }
+        
+        const uniqueDates = [...new Set(data.map(row => row.date))];
+        console.log('Unique dates found:', uniqueDates);
+        
+        const dateSelect = document.getElementById('dateSelect');
+        if (!dateSelect) {
+            console.error('Date select element not found');
+            return;
+        }
+        
+        uniqueDates.sort().forEach(date => {
+            const option = document.createElement('option');
+            option.value = date;
+            option.text = date;
+            dateSelect.appendChild(option);
+        });
+        
+        console.log('Dropdown populated');
+        
+        dateSelect.addEventListener('change', () => {
+            console.log('Date changed to:', dateSelect.value);
+            updateRoute(data, dateSelect.value);
+        });   
+             
+        if (uniqueDates.length > 0) {
+            console.log('Loading initial date:', uniqueDates[0]);
+            updateRoute(data, uniqueDates[0]);
+        }
+    }
+
+
+
+
+    // Add all event listeners
+    document.addEventListener('DOMContentLoaded', () => {
+        // Show/hide hexagon controls based on checkbox
+        document.getElementById('showHexagons').addEventListener('change', (e) => {
+            const controls = document.getElementById('hexagonControls');
+            controls.classList.toggle('visible', e.target.checked);
+            
+            if (e.target.checked) {
+                const currentDate = document.getElementById('dateSelect').value;
+                loadCSV().then(data => updateRoute(data, currentDate));
+            } else {
+                if (map.getLayer('hexagons')) {
+                    map.removeLayer('hexagons');
+                    map.removeSource('hexagons-source');
+                    hexagonLayer = null;
+                }
+            }
+        });
+
+        // Hexagon resolution slider
+        document.getElementById('hexagonResolution').addEventListener('input', (e) => {
+            const value = parseInt(e.target.value);
+            document.getElementById('hexResValue').textContent = value;
+            hexagonConfig.resolution = value;
+            
+            if (document.getElementById('showHexagons').checked) {
+                const currentDate = document.getElementById('dateSelect').value;
+                loadCSV().then(data => {
+                    const coordinates = data
+                        .filter(row => row.date === currentDate)
+                        .map(row => [parseFloat(row.longitude), parseFloat(row.latitude)]);
+                    createHexagons(coordinates);
+                });
+            }
+        });
+
+        // Hexagon height slider
+        document.getElementById('hexagonHeight').addEventListener('input', (e) => {
+            const value = parseInt(e.target.value);
+            document.getElementById('hexHeightValue').textContent = value;
+            hexagonConfig.maxHeight = value;
+            
+            if (document.getElementById('showHexagons').checked) {
+                const currentDate = document.getElementById('dateSelect').value;
+                loadCSV().then(data => {
+                    const coordinates = data
+                        .filter(row => row.date === currentDate)
+                        .map(row => [parseFloat(row.longitude), parseFloat(row.latitude)]);
+                    createHexagons(coordinates);
+                });
+            }
+        });
+
+        // Other display toggles
+        document.getElementById('showTimeMarkers').addEventListener('change', (e) => {
+            if (e.target.checked) {
+                timeMarkers.forEach(marker => marker.addTo(map));
+            } else {
+                timeMarkers.forEach(marker => marker.remove());
+            }
+        });
+    
+        document.getElementById('showStartEnd').addEventListener('change', (e) => {
+            if (e.target.checked) {
+                startEndMarkers.forEach(marker => marker.addTo(map));
+            } else {
+                startEndMarkers.forEach(marker => marker.remove());
+            }
+        });
+
+        document.getElementById('show3DBuildings').addEventListener('change', (e) => {
+            toggle3DBuildings(e.target.checked);
+            
+            if (e.target.checked) {
+                map.easeTo({
+                    pitch: 60,
+                    duration: 1000
+                });
+            } else {
+                if (!document.getElementById('showHexagons').checked) {
+                    map.easeTo({
+                        pitch: 0,
+                        duration: 1000
+                    });
+                }
+            }
+        });
+    
+        document.getElementById('showHeatmap').addEventListener('change', (e) => {
+            if (e.target.checked) {
+                const currentDate = document.getElementById('dateSelect').value;
+                loadCSV().then(data => updateRoute(data, currentDate));
+            } else {
+                if (map.getLayer('heatmap-layer')) {
+                    map.removeLayer('heatmap-layer');
+                    map.removeSource('heatmap-source');
+                    heatmapLayer = null;
+                }
+            }
+        });
+
+        document.getElementById('mapStyle').addEventListener('change', (e) => {
+            const style = e.target.value;
+            const was3DEnabled = document.getElementById('show3DBuildings').checked;
+            const currentDate = document.getElementById('dateSelect').value;
+            
+            // Store current state
+            const timeMarkersEnabled = document.getElementById('showTimeMarkers').checked;
+            const startEndEnabled = document.getElementById('showStartEnd').checked;
+            
+            map.setStyle(style);
+            
+            map.once('style.load', () => {
+                loadCSV().then(data => {
+                    // Recreate route and markers
+                    const { coordinates, timestamps } = recreateMarkers(data, currentDate);
+                    
+                    // Update route
+                    if (map.getSource('route')) {
+                        map.getSource('route').setData({
+                            type: 'Feature',
+                            properties: {},
+                            geometry: {
+                                type: 'LineString',
+                                coordinates: coordinates
+                            }
+                        });
+                    } else {
+                        updateRoute(data, currentDate);
+                    }
+                    
+                    // Restore other layers
+                    if (was3DEnabled) {
+                        toggle3DBuildings(true);
+                    }
+                    if (document.getElementById('showHeatmap').checked) {
+                        createHeatmapLayer(coordinates);
+                    }
+                    if (document.getElementById('showHexagons').checked) {
+                        createHexagons(coordinates);
+                    }
+                });
+            });
+        });
+
+    });
+
+    //     // Add the animation control event listeners
+    //     document.getElementById('playRoute').addEventListener('click', () => {
+    //     const currentDate = document.getElementById('dateSelect').value;
+        
+    //     loadCSV().then(data => {
+    //         const sortedData = data
+    //             .filter(row => row.date === currentDate)
+    //             .sort((a, b) => {
+    //                 const timeA = new Date(`${a.date} ${a.TIMESTAMP.split(' ')[1]}`);
+    //                 const timeB = new Date(`${b.date} ${b.TIMESTAMP.split(' ')[1]}`);
+    //                 return timeA - timeB;
+    //             });
+
+    //         // Log the first few timestamps to verify the data
+    //         console.log("First few timestamps:", sortedData.slice(0, 5).map(row => row.TIMESTAMP.split(' ')[1]));
+
+    //         const coordinates = [];
+    //         const timestamps = [];
+            
+    //         sortedData.forEach(row => {
+    //             coordinates.push([parseFloat(row.longitude), parseFloat(row.latitude)]);
+    //             timestamps.push(row.TIMESTAMP.split(' ')[1]);
+    //         });
+
+    //         if (coordinates.length > 1) {
+    //             document.getElementById('playRoute').style.display = 'none';
+    //             document.getElementById('pauseRoute').style.display = 'block';
+    //             document.getElementById('stopRoute').style.display = 'block';
+    //             animateRoute(coordinates, timestamps);
+    //         }
+    //     });
+    // });
+
+
+
+    document.getElementById('stopRoute').addEventListener('click', () => {
+        if (animationFrameId) {
+            cancelAnimationFrame(animationFrameId);
+            animationFrameId = null;
+        }
+        if (animationMarker) {
+            animationMarker.remove();
+            animationMarker = null;
+        }
+        document.getElementById('playRoute').style.display = 'block';
+        document.getElementById('stopRoute').style.display = 'none';
+        
+        // Restore markers
+        const currentDate = document.getElementById('dateSelect').value;
+        loadCSV().then(data => {
+            recreateMarkers(data, currentDate);
+        });
+    });
+
+    document.getElementById('animationSpeed').addEventListener('input', (e) => {
+        document.getElementById('speedValue').textContent = `${e.target.value}x`;
+    });
+    
+
+    document.getElementById('playRoute').addEventListener('click', () => {
+    if (animationPaused) {
+        // Resume animation
+        animationPaused = false;
+        document.getElementById('playRoute').style.display = 'none';
+        document.getElementById('pauseRoute').style.display = 'block';
+        document.getElementById('stopRoute').style.display = 'block';
+        animateRoute(currentCoordinates, currentTimestamps);
+    } else {
+        // Start new animation
+        const currentDate = document.getElementById('dateSelect').value;
+        loadCSV().then(data => {
+            const sortedData = data
+                .filter(row => row.date === currentDate)
+                .sort((a, b) => {
+                    const timeA = new Date(`${a.date} ${a.TIMESTAMP.split(' ')[1]}`);
+                    const timeB = new Date(`${b.date} ${b.TIMESTAMP.split(' ')[1]}`);
+                    return timeA - timeB;
+                });
+
+            currentCoordinates = sortedData.map(row => [
+                parseFloat(row.longitude),
+                parseFloat(row.latitude)
+            ]);
+            currentTimestamps = sortedData.map(row => row.TIMESTAMP.split(' ')[1]);
+
+            if (currentCoordinates.length > 1) {
+                document.getElementById('playRoute').style.display = 'none';
+                document.getElementById('pauseRoute').style.display = 'block';
+                document.getElementById('stopRoute').style.display = 'block';
+                lastProgress = 0;
+                animateRoute(currentCoordinates, currentTimestamps);
+            }
+        });
+    }
+});
+
+document.getElementById('pauseRoute').addEventListener('click', () => {
+    animationPaused = true;
+    if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+        animationFrameId = null;
+    }
+    document.getElementById('playRoute').style.display = 'block';
+    document.getElementById('pauseRoute').style.display = 'none';
+});
+
+document.getElementById('stopRoute').addEventListener('click', () => {
+    animationPaused = false;
+    lastProgress = 0;
+    if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+        animationFrameId = null;
+    }
+    if (animationMarker) {
+        animationMarker.remove();
+        animationMarker = null;
+    }
+    document.getElementById('playRoute').style.display = 'block';
+    document.getElementById('pauseRoute').style.display = 'none';
+    document.getElementById('stopRoute').style.display = 'none';
+    
+    // Restore markers
+    const currentDate = document.getElementById('dateSelect').value;
+    loadCSV().then(data => {
+        recreateMarkers(data, currentDate);
+    });
+});
+
+
+
+
+
+
+    // Initialize when map loads
+    map.on('load', async () => {
+        try {
+            console.log('Map loaded, initializing...');
+            // Add navigation control
+            map.addControl(new mapboxgl.NavigationControl());
+            
+            // Initialize data
+            await initializeData();
+            console.log('Initialization complete');
+        } catch (error) {
+            console.error('Error during initialization:', error);
+        }
+    });
+
+
+
+
+
+</script>
+
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+

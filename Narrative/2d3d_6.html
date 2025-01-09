@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Combined 3D Scatter Plots</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.24.2/plotly.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    <style>
+        body {
+            margin: 20px;
+            font-family: Arial, sans-serif;
+        }
+        .plot-container {
+            width: 800px;
+            height: 600px;
+            margin: 20px auto;
+            border: 1px solid #ccc;
+            padding: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h2 {
+            text-align: center;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <h2>Version 1: Basic Network Layout</h2>
+    <div id="plot1" class="plot-container"></div>
+    
+    <h2>Version 2: Enhanced Network Layout</h2>
+    <div id="plot2" class="plot-container"></div>
+
+    <script>
+        function createPlot1() {
+            // Define data within the function scope
+            const nodes = [
+                { id: "COCAINE", group: 1, weight: 0.551048, radius: 40 },
+                { id: "SEIZURE", group: 1, weight: 0.364581, radius: 35 },
+                { id: "INVESTIGATION", group: 2, weight: 0.424509, radius: 30 },
+                { id: "QUANTITY", group: 3, weight: 0.383739, radius: 30 },
+                { id: "METHOD", group: 4, weight: 0.344153, radius: 25 },
+                { id: "LOCATION", group: 5, weight: 0.429805, radius: 25 },
+                { id: "tons", group: 3, weight: 0.2, radius: 15 },
+                { id: "kilos", group: 3, weight: 0.2, radius: 15 },
+                { id: "hidden", group: 4, weight: 0.2, radius: 15 },
+                { id: "load", group: 4, weight: 0.2, radius: 15 },
+                { id: "europe", group: 5, weight: 0.2, radius: 15 }
+            ];
+
+            const links = [
+                { source: "COCAINE", target: "SEIZURE" },
+                { source: "COCAINE", target: "QUANTITY" },
+                { source: "COCAINE", target: "METHOD" },
+                { source: "COCAINE", target: "LOCATION" },
+                { source: "QUANTITY", target: "tons" },
+                { source: "QUANTITY", target: "kilos" },
+                { source: "METHOD", target: "hidden" },
+                { source: "METHOD", target: "load" },
+                { source: "LOCATION", target: "europe" }
+            ];
+
+            // Convert links to use node references instead of strings
+            const linkObjects = links.map(link => ({
+                source: nodes.find(node => node.id === link.source),
+                target: nodes.find(node => node.id === link.target)
+            }));
+
+            const simulation = d3.forceSimulation(nodes)
+                .force("link", d3.forceLink(linkObjects).distance(50))
+                .force("charge", d3.forceManyBody().strength(-50))
+                .force("center", d3.forceCenter(0, 0))
+                .stop();
+
+            // Run simulation
+            for (let i = 0; i < 300; ++i) simulation.tick();
+
+            // Ensure z coordinates
+            nodes.forEach(node => {
+                node.z = node.z || (Math.random() * 100 - 50);
+            });
+
+            // Create scatter points
+            const scatterTrace = {
+                type: 'scatter3d',
+                mode: 'markers+text',
+                x: nodes.map(node => node.x),
+                y: nodes.map(node => node.y),
+                z: nodes.map(node => node.z),
+                text: nodes.map(node => node.id),
+                textposition: 'top center',
+                marker: {
+                    size: nodes.map(node => node.radius),
+                    color: nodes.map(node => node.group),
+                    opacity: 0.8
+                },
+                showlegend: false
+            };
+
+            // Create links
+            const linkTraces = linkObjects.map(link => ({
+                type: 'scatter3d',
+                mode: 'lines',
+                x: [link.source.x, link.target.x, null],
+                y: [link.source.y, link.target.y, null],
+                z: [link.source.z, link.target.z, null],
+                line: {
+                    width: 2,
+                    color: 'gray'
+                },
+                showlegend: false
+            }));
+
+            const layout = {
+                margin: { l: 0, r: 0, b: 0, t: 0 },
+                scene: {
+                    xaxis: { title: 'X' },
+                    yaxis: { title: 'Y' },
+                    zaxis: { title: 'Z' }
+                },
+                showlegend: false
+            };
+
+            Plotly.newPlot('plot1', [scatterTrace, ...linkTraces], layout);
+        }
+
+        function createPlot2() {
+            const colorScale = d3.scaleOrdinal(d3.schemeCategory10);
+            
+            const nodes = [
+                { id: "COCAINE", group: 1, weight: 0.551048, radius: 40 },
+                { id: "SEIZURE", group: 1, weight: 0.364581, radius: 35 },
+                { id: "INVESTIGATION", group: 2, weight: 0.424509, radius: 30 },
+                { id: "QUANTITY", group: 3, weight: 0.383739, radius: 30 },
+                { id: "METHOD", group: 4, weight: 0.344153, radius: 25 },
+                { id: "LOCATION", group: 5, weight: 0.429805, radius: 25 },
+                { id: "tons", group: 3, weight: 0.2, radius: 15 },
+                { id: "kilos", group: 3, weight: 0.2, radius: 15 },
+                { id: "hidden", group: 4, weight: 0.2, radius: 15 },
+                { id: "load", group: 4, weight: 0.2, radius: 15 },
+                { id: "europe", group: 5, weight: 0.2, radius: 15 }
+            ];
+
+            const links = [
+                { source: "COCAINE", target: "SEIZURE" },
+                { source: "COCAINE", target: "QUANTITY" },
+                { source: "COCAINE", target: "METHOD" },
+                { source: "COCAINE", target: "LOCATION" },
+                { source: "QUANTITY", target: "tons" },
+                { source: "QUANTITY", target: "kilos" },
+                { source: "METHOD", target: "hidden" },
+                { source: "METHOD", target: "load" },
+                { source: "LOCATION", target: "europe" }
+            ];
+
+            nodes.forEach(node => {
+                node.color = colorScale(node.group);
+            });
+
+            // Convert links to use node references
+            const linkObjects = links.map(link => ({
+                source: nodes.find(node => node.id === link.source),
+                target: nodes.find(node => node.id === link.target)
+            }));
+
+            const simulation = d3.forceSimulation(nodes)
+                .force("link", d3.forceLink(linkObjects).distance(100))
+                .force("charge", d3.forceManyBody().strength(-200))
+                .force("center", d3.forceCenter(0, 0))
+                .stop();
+
+            for (let i = 0; i < 300; i++) simulation.tick();
+
+            nodes.forEach(node => {
+                node.z = node.group * 50; // Organize by group in z-axis
+            });
+
+            const linkTraces = linkObjects.map(link => ({
+                type: 'scatter3d',
+                mode: 'lines',
+                x: [link.source.x, link.target.x, null],
+                y: [link.source.y, link.target.y, null],
+                z: [link.source.z, link.target.z, null],
+                line: {
+                    width: 4,
+                    color: 'grey'
+                }
+            }));
+
+            const nodeTrace = {
+                type: 'scatter3d',
+                mode: 'markers+text',
+                x: nodes.map(node => node.x),
+                y: nodes.map(node => node.y),
+                z: nodes.map(node => node.z),
+                text: nodes.map(node => node.id),
+                textposition: 'top center',
+                marker: {
+                    size: nodes.map(node => node.radius * 1.5),
+                    color: nodes.map(node => node.color),
+                    opacity: 0.8
+                },
+                textfont: {
+                    size: 14
+                }
+            };
+
+            const layout = {
+                margin: { l: 0, r: 0, b: 0, t: 0 },
+                scene: {
+                    xaxis: { title: 'X' },
+                    yaxis: { title: 'Y' },
+                    zaxis: { title: 'Z' }
+                },
+                showlegend: false
+            };
+
+            Plotly.newPlot('plot2', [...linkTraces, nodeTrace], layout);
+        }
+
+        // Create both plots
+        createPlot1();
+        createPlot2();
+    </script>
+</body>
+</html>

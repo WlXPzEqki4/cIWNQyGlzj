@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Article Analysis</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.0/papaparse.min.js"></script> <!-- For CSV Parsing -->
+  <style>
+    body {
+      background-color: #0f172a;
+      color: #cbd5e1;
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 2rem auto;
+      padding: 1rem;
+    }
+    .section-box {
+      background-color: #1e293b;
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.3);
+    }
+    .section-box h3 {
+      color: #93c5fd;
+    }
+    .article-list ul {
+      list-style-type: none;
+      padding: 0;
+    }
+    .article-list li {
+      margin-bottom: 0.75rem;
+      padding: 0.5rem;
+      border-bottom: 1px solid #334155;
+    }
+    .article-list li a {
+      color: #93c5fd;
+      text-decoration: none;
+    }
+    .prose-section p {
+      margin: 0.75rem 0;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <!-- Links Section -->
+    <div class="section-box">
+      <h3>🔗 Open Source Articles</h3>
+      <div class="article-list">
+        <ul id="article-links">
+          <!-- Dynamically populated list -->
+        </ul>
+      </div>
+    </div>
+
+    <!-- Prose Section -->
+    <div class="section-box">
+      <h3>📄 Cleaned Corpus</h3>
+      <div class="prose-section" id="cleaned-prose">
+        <!-- Dynamically populated prose -->
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Load and Parse CSV Files
+    function loadCSV(filePath, callback) {
+      Papa.parse(filePath, {
+        download: true,
+        header: true,
+        complete: function(results) {
+          callback(results.data);
+        }
+      });
+    }
+
+    // Populate Article Links
+    function populateLinks(articles) {
+      const articleList = document.getElementById('article-links');
+      articles.forEach(article => {
+        const listItem = document.createElement('li');
+        listItem.innerHTML = `
+          <a href="${article.link}" target="_blank">${article.title}</a>
+          <span> - ${article.source} (${article.date})</span>
+        `;
+        articleList.appendChild(listItem);
+      });
+    }
+
+    // Populate Cleaned Prose
+    function populateProse(corpus) {
+      const proseSection = document.getElementById('cleaned-prose');
+      corpus.forEach(item => {
+        const paragraph = document.createElement('p');
+        paragraph.innerHTML = `<strong>${item.title}:</strong> ${item.prose}`;
+        proseSection.appendChild(paragraph);
+      });
+    }
+
+    // Load Data
+    document.addEventListener('DOMContentLoaded', () => {
+      loadCSV('./assets/articles.csv', populateLinks); // Load and populate article links
+      loadCSV('./assets/cleaned_corpus.csv', populateProse); // Load and populate cleaned prose
+    });
+  </script>
+
+</body>
+</html>
+
+
+
+
+

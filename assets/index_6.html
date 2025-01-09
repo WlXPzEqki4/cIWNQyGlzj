@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Daily Route Visualization</title>
+<meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+<link href="https://api.mapbox.com/mapbox-gl-js/v3.8.0/mapbox-gl.css" rel="stylesheet">
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.8.0/mapbox-gl.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+<style>
+    body { margin: 0; padding: 0; }
+    #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+    .map-overlay {
+        font: 12px/20px 'Helvetica Neue', Arial, Helvetica, sans-serif;
+        position: absolute;
+        width: 200px;
+        top: 0;
+        left: 0;
+        padding: 10px;
+    }
+    .map-overlay .map-overlay-inner {
+        background-color: #fff;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        border-radius: 3px;
+        padding: 10px;
+        margin-bottom: 10px;
+    }
+    .map-overlay-inner select {
+        width: 100%;
+    }
+    .marker-time {
+        background-color: white;
+        border: 2px solid #666;
+        border-radius: 4px;
+        padding: 4px 8px;
+        font-size: 14px;
+        font-weight: bold;
+        pointer-events: none;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        min-width: 60px;
+        text-align: center;
+    }
+</style>
+</head>
+<body>
+<div id="map"></div>
+
+<div class="map-overlay">
+    <div class="map-overlay-inner">
+        <label>Select Date</label>
+        <select id="dateSelect"></select>
+        
+        <div style="margin-top: 10px;">
+            <label style="display: block; margin-bottom: 5px;">Map Style:</label>
+            <select id="mapStyle" style="margin-bottom: 10px;">
+                <option value="mapbox://styles/mapbox/streets-v12">Streets</option>
+                <option value="mapbox://styles/mapbox/satellite-v9">Satellite</option>
+                <option value="mapbox://styles/mapbox/satellite-streets-v12">Satellite with Streets</option>
+                <option value="mapbox://styles/mapbox/light-v11">Light</option>
+                <option value="mapbox://styles/mapbox/dark-v11">Dark</option>
+                <option value="mapbox://styles/mapbox/navigation-day-v1">Navigation Day</option>
+                <option value="mapbox://styles/mapbox/navigation-night-v1">Navigation Night</option>
+            </select>
+
+            <label style="display: block; margin-bottom: 5px;">Display Options:</label>
+            <div>
+                <input type="checkbox" id="showTimeMarkers" checked>
+                <label for="showTimeMarkers">Show Time Labels</label>
+            </div>
+            <div>
+                <input type="checkbox" id="showStartEnd" checked>
+                <label for="showStartEnd">Show Start/End Points</label>
+            </div>
+            <div>
+                <input type="checkbox" id="show3DBuildings">
+                <label for="show3DBuildings">Show 3D Buildings</label>
+            </div>
+            <div>
+                <input type="checkbox" id="showHeatmap">
+                <label for="showHeatmap">Show Heatmap</label>
+            </div>
+            <div>
+                <input type="checkbox" id="showHexagons">
+                <label for="showHexagons">Show 3D Hexagons</label>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+mapboxgl.accessToken = 'pk.eyJ1IjoiamNkZW50b24yMDUxIiwiYSI6ImNtMzVkZXJudTA5ejkya3B5NDU4Z2MyeHQifQ.aUk4eH5k3JC45Foxcbe2qQ';
+
+// Initialize map
+const map = new mapboxgl.Map({
+    container: 'map',
+    style: 'mapbox://styles/mapbox/streets-v12',
+    center: [55.38279, 25.08532],
+    zoom: 15,
+    pitch: 0,
+    bearing: 0
+});
+
+// Store markers and layers globally
+let timeMarkers = [];
+let startEndMarkers = [];
+let heatmapLayer = null;
+let hexagonLayer = null;
+
+// Load and process CSV data
+async function loadCSV() {
+    const response = await fetch('new_df.csv');
+    const text = await response.text();
+    
+    return new Promise(resolve => {
+        Papa.parse(text, {
+            header: true,
+            complete: function(results) {
+                resolve(results.data);
+            }
+        });
+    });
+}
+
+// Clear existing markers and layers
+function clearMarkers() {
+    timeMarkers.forEach(marker => marker.remove());
+    timeMarkers = [];
+    startEndMarkers.forEach(marker => marker.remove());
+    startEndMarkers = [];
+}
+
+// Create time marker element
+function createTimeMarker(time) {
+    const el = document.createElement('div');
+    el.className = 'marker-time';
+    el.textContent = time;
+    return el;
+}
+
+// Function to toggle time markers visibility
+function toggleTimeMarkers(show) {
+    timeMarkers.forEach(marker => {
+        const el = marker.getElement();
+        el.style.display = show ? 'block' : 'none';
+    });
+}
+
+// Function to handle 3D buildings layer
+function toggle3DBuildings(show) {
+    if (show) {
+        if (!map.getLayer('3d-buildings')) {
+            map.addLayer({
+                'id': '3d-buildings',
+                'source': 'composite',
+                'source-layer': 'building',
+                'filter': ['==', 'extrude', 'true'],
+                'type': 'fill-extrusion',
+                'minzoom': 15,
+                'paint': {
+                    'fill-extrusion-color': '#aaa',
+                    'fill-extrusion-height': [
+                        'interpolate',
+                        ['linear'],
+                        ['zoom'],
+                        15,
+                        0,
+                        15.05,
+                        ['get', 'height']
+                    ],
+                    'fill-extrusion-base': [
+                        'interpolate',
+                        ['linear'],
+                        ['zoom'],
+                        15,
+                        0,
+                        15.05,
+                        ['get', 'min_height']
+                    ],
+                    'fill-extrusion-opacity': 0.6
+                }
+            });
+        }
+    } else {
+        if (map.getLayer('3d-buildings')) {
+            map.removeLayer('3d-buildings');
+        }
+    }
+}
+
+// Function to create heatmap layer
+function createHeatmapLayer(coordinates) {
+    if (map.getLayer('heatmap-layer')) {
+        map.removeLayer('heatmap-layer');
+    }
+    if (map.getSource('heatmap-source')) {
+        map.removeSource('heatmap-source');
+    }
+
+    map.addSource('heatmap-source', {
+        'type': 'geojson',
+        'data': {
+            'type': 'FeatureCollection',
+            'features': coordinates.map(coord => ({
+                'type': 'Feature',
+                'properties': {
+                    'intensity': 1
+                },
+                'geometry': {
+                    'type': 'Point',
+                    'coordinates': coord
+                }
+            }))
+        }
+    });
+
+    map.addLayer({
+        'id': 'heatmap-layer',
+        'type': 'heatmap',
+        'source': 'heatmap-source',
+        'paint': {
+            'heatmap-weight': 1,
+            'heatmap-intensity': 1,
+            'heatmap-color': [
+                'interpolate',
+                ['linear'],
+                ['heatmap-density'],
+                0, 'rgba(0, 0, 255, 0)',
+                0.2, 'rgba(0, 0, 255, 0.5)',
+                0.4, 'rgba(0, 255, 255, 0.5)',
+                0.6, 'rgba(0, 255, 0, 0.5)',
+                0.8, 'rgba(255, 255, 0, 0.5)',
+                1, 'rgba(255, 0, 0, 0.5)'
+            ],
+            'heatmap-radius': 30,
+            'heatmap-opacity': 0.7
+        }
+    });
+
+    heatmapLayer = true;
+}
+
+// Function to create hexagon layer
+function createHexagons(coordinates) {
+    if (!coordinates.length) return;
+
+    if (map.getLayer('hexagons')) {
+        map.removeLayer('hexagons');
+    }
+    if (map.getSource('hexagons-source')) {
+        map.removeSource('hexagons-source');
+    }
+
+    const features = coordinates.map(coord => ({
+        type: 'Feature',
+        properties: { count: 1 },
+        geometry: {
+            type: 'Point',
+            coordinates: coord
+        }
+    }));
+
+    map.addSource('hexagons-source', {
+        'type': 'geojson',
+        'data': {
+            type: 'FeatureCollection',
+            features: features
+        }
+    });
+
+    map.addLayer({
+        'id': 'hexagons',
+        'type': 'fill-extrusion',
+        'source': 'hexagons-source',
+        'paint': {
+            'fill-extrusion-color': [
+                'interpolate',
+                ['linear'],
+                ['get', 'count'],
+                0, '#0000FF',
+                5, '#00FF00',
+                10, '#FF0000'
+            ],
+            'fill-extrusion-height': [
+                'interpolate',
+                ['linear'],
+                ['get', 'count'],
+                0, 0,
+                10, 1000
+            ],
+            'fill-extrusion-base': 0,
+            'fill-extrusion-opacity': 0.7
+        }
+    });
+
+    hexagonLayer = true;
+}
+
+// Function to create start/end markers
+function createStartEndMarkers(coordinates, timestamps) {
+    startEndMarkers.forEach(marker => marker.remove());
+    startEndMarkers = [];
+
+    if (coordinates.length < 2) return;
+
+    const startMarker = new mapboxgl.Marker({
+        color: '#FF0000',
+        scale: 2
+    })
+        .setLngLat(coordinates[0])
+        .setPopup(new mapboxgl.Popup().setText(`Start: ${timestamps[0]}`))
+        .addTo(map);
+
+    const endMarker = new mapboxgl.Marker({
+        color: '#0000FF',
+        scale: 2
+    })
+        .setLngLat(coordinates[coordinates.length - 1])
+        .setPopup(new mapboxgl.Popup().setText(`End: ${timestamps[timestamps.length - 1]}`))
+        .addTo(map);
+
+    startEndMarkers.push(startMarker, endMarker);
+}
+
+// Process data and populate dropdown
+async function initializeData() {
+    const data = await loadCSV();
+    
+    const uniqueDates = [...new Set(data.map(row => row.date))];
+    
+    const dateSelect = document.getElementById('dateSelect');
+    uniqueDates.sort().forEach(date => {
+        const option = document.createElement('option');
+        option.value = date;
+        option.text = date;
+        dateSelect.appendChild(option);
+    });
+    
+    dateSelect.addEventListener('change', () => updateRoute(data, dateSelect.value));
+    
+    if (uniqueDates.length > 0) {
+        updateRoute(data, uniqueDates[0]);
+    }
+}
+
+// Update route for selected date
+function updateRoute(data, selectedDate) {
+    clearMarkers();
+
+    const dayData = data
+        .filter(row => row.date === selectedDate)
+        .sort((a, b) => {
+            const timeA = new Date(`${a.date} ${a.TIMESTAMP.split(' ')[1]}`);
+            const timeB = new Date(`${b.date} ${b.TIMESTAMP.split(' ')[1]}`);
+            return timeA - timeB;
+        });
+
+    const coordinates = [];
+    const timestamps = [];
+
+    dayData.forEach(row => {
+        const lng = parseFloat(row.longitude);
+        const lat = parseFloat(row.latitude);
+        const time = row.TIMESTAMP.split(' ')[1];
+
+        coordinates.push([lng, lat]);
+        timestamps.push(time);
+
+        if (document.getElementById('showTimeMarkers').checked) {
+            const marker = new mapboxgl.Marker({
+                element: createTimeMarker(time),
+                anchor: 'bottom'
+            })
+                .setLngLat([lng, lat])
+                .addTo(map);
+            
+            timeMarkers.push(marker);
+        }
+    });
+
+    if (document.getElementById('showStartEnd').checked) {
+        createStartEndMarkers(coordinates, timestamps);
+    }
+
+    if (document.getElementById('showHeatmap').checked) {
+        createHeatmapLayer(coordinates);
+    }
+
+    if (document.getElementById('showHexagons').checked) {
+        createHexagons(coordinates);
+    }
+
+    if (map.getSource('route')) {
+        map.getSource('route').setData({
+            type: 'Feature',
+            properties: {},
+            geometry: {
+                type: 'LineString',
+                coordinates: coordinates
+            }
+        });
+    } else {
+        map.addSource('route', {
+            type: 'geojson',
+            lineMetrics: true,
+            data: {
+                type: 'Feature',
+                properties: {},
+                geometry: {
+                    type: 'LineString',
+                    coordinates: coordinates
+                }
+            }
+        });
+
+        map.addLayer({
+            id: 'route',
+            type: 'line',
+            source: 'route',
+            layout: {
+                'line-join': 'round',
+                'line-cap': 'round'
+            },
+            paint: {
+                'line-width': 6,
+                'line-gradient': [
+                    'interpolate',
+                    ['linear'],
+                    ['line-progress'],
+                    0, '#FF0000',
+                    1, '#0000FF'
+                ]
+            }
+        });
+    }
+
+    const bounds = coordinates.reduce((bounds, coord) => {
+        return bounds.extend(coord);
+    }, new mapboxgl.LngLatBounds(coordinates[0], coordinates[0]));
+
+    map.fitBounds(bounds, {
+        padding: 50
+    });
+}
+
+// Add event listeners
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('showTimeMarkers').addEventListener('change', (e) => {
+        if (e.target.checked) {
+            timeMarkers.forEach(marker => marker.addTo(map));
+        } else {
+            timeMarkers.forEach(marker => marker.remove());
+        }
+    });
+
+    document.getElementById('showStartEnd').addEventListener('change', (e) => {
+        if (e.target.checked) {
+            startEndMarkers.forEach(marker => marker.addTo(map));
+        } else {
+            startEndMarkers.forEach(marker => marker.remove());
+        }
+    });
+
+    document.getElementById('mapStyle').addEventListener('change', (e) => {
+        const style = e.target.value;
+        const was3DEnabled = document.getElementById('show3DBuildings').checked;
+        
+        map.setStyle(style);
+        
+        map.once('style.load', () => {
+            const currentDate = document.getElementById('dateSelect').value;
+            loadCSV().then(data => updateRoute(data, currentDate));
+            
+            if (was3DEnabled) {
+                toggle3DBuildings(true);
+            }
+        });
+    });
+
+    document.getElementById('show3DBuildings').addEventListener('change', (e) => {
+        toggle3DBuildings(e.target.checked);
+        
+        if (e.target.checked) {
+            map.easeTo({
+                pitch: 60,
+                duration: 1000
+            });
+        } else {
+            map.easeTo({
+                pitch: 0,
+                duration: 1000
+            });
+        }
+    });
+
+    document.getElementById('showHeatmap').addEventListener('change', (e) => {
+        if (e.target.checked) {
+            const currentDate = document.getElementById('dateSelect').value;
+            loadCSV().then(data => updateRoute(data, currentDate));
+        } else {
+            if (map.getLayer('heatmap-layer')) {
+                map.removeLayer('heatmap-layer');
+                map.removeSource('heatmap-source');
+                heatmapLayer = null;
+            }
+        }
+    });
+
+    document.getElementById('showHexagons').addEventListener('change', (e) => {
+        if (e.target.checked) {
+            const currentDate = document.getElementById('dateSelect').value;
+            loadCSV().then(data => updateRoute(data, currentDate));
+            map.easeTo({
+                pitch: 60,
+                duration: 1000
+            });
+        } else {
+            if (map.getLayer('hexagons')) {
+                map.removeLayer('hexagons');
+                map.removeSource('hexagons-source');
+                hexagonLayer = null;
+            }
+            if (!document.getElementById('show3DBuildings').checked) {
+                map.easeTo({
+                    pitch: 0,
+                    duration: 1000
+                });
+            }
+        }
+    });
+});
+
+// Initialize when map loads
+map.on('load', initializeData);
+</script>
+
+</body>
+</html>
+
+
+
+

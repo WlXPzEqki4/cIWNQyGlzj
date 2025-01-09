@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Narrative Analysis Dashboard</title>
+    
+    <!-- React Dependencies -->
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.development.js"></script>
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.development.js"></script>
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/prop-types/15.8.1/prop-types.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/recharts/2.10.3/Recharts.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            padding: 20px;
+            background: #f5f5f5;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1, h2, h3 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 40px;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .chart-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 40px;
+            min-height: 400px;
+        }
+
+        @media (max-width: 768px) {
+            .patterns-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>Narrative Analysis Visualisations</h1>
+    <div id="root"></div>
+</div>
+
+<script type="text/babel">
+
+    const {
+        CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+        XAxis, YAxis, ZAxis, ScatterChart, Scatter, LineChart, Line, AreaChart, Area,
+        BarChart, Bar, ComposedChart, ReferenceLine
+    } = Recharts;
+
+    // Narrative colours
+    const narrativeColors = {
+        narrative1: "#ff4646",
+        narrative2: "#4666ff",
+        narrative3: "#46af46",
+        narrative5: "#ff8c46"
+    };
+
+    // Original narrative article data sets:
+    const p1ArticleData = [
+        { article_id: 1, date: '2022-03-17', strength_score: 0.8905, indicator_count: 4, narrative: 'narrative1', method: "Matched 4 indicators: investigation, alleged cocaine, seizure, load cocaine" },
+        { article_id: 2, date: '2022-06-13', strength_score: 1.2522, indicator_count: 7, narrative: 'narrative1', method: "Matched 7 indicators: cocaine hidden, seizures, investigation" },
+        { article_id: 3, date: '2022-06-13', strength_score: 1.3719, indicator_count: 7, narrative: 'narrative1', method: "Matched 7 indicators: investigation, seizures, kilos cocaine" },
+        { article_id: 4, date: '2022-06-14', strength_score: 0.157, indicator_count: 2, narrative: 'narrative1', method: "Matched 2 indicators: cocaine shipments, cocaine seized" },
+        { article_id: 6, date: '2022-06-22', strength_score: 0.843, indicator_count: 4, narrative: 'narrative1', method: "Matched 4 indicators: cocaine hidden, seizures, alleged cocaine" }
+    ];
+
+    const p2ArticleData = [
+        { article_id: 2, date: '2022-06-13', strength_score: 0.8708, indicator_count: 5, narrative: 'narrative2', method: "Matched 5 indicators: arrest, arrested, international arrest" },
+        { article_id: 3, date: '2022-06-13', strength_score: 1.0134, indicator_count: 6, narrative: 'narrative2', method: "Matched 6 indicators: arrest, arrested june, arrest warrant" },
+        { article_id: 4, date: '2022-06-14', strength_score: 0.5073, indicator_count: 3, narrative: 'narrative2', method: "Matched 3 indicators: arrested, international arrest" },
+        { article_id: 7, date: '2022-06-12', strength_score: 0.4617, indicator_count: 3, narrative: 'narrative2', method: "Matched 3 indicators: arrest, arrested, learning arrest" },
+        { article_id: 10, date: '2022-07-18', strength_score: 0.4092, indicator_count: 3, narrative: 'narrative2', method: "Matched 3 indicators: arrest, arrested carrying" }
+    ];
+
+    const p3ArticleData = [
+        { article_id: 1, date: '2022-03-17', strength_score: 0.4939, indicator_count: 3, narrative: 'narrative3', method: "Matched 3 indicators: extradition request, extradition paraguay" },
+        { article_id: 2, date: '2022-06-13', strength_score: 1.0401, indicator_count: 5, narrative: 'narrative3', method: "Matched 5 indicators: extradition, request extradition" },
+        { article_id: 3, date: '2022-06-13', strength_score: 0.8724, indicator_count: 4, narrative: 'narrative3', method: "Matched 4 indicators: confirmed extradition, request extradition" },
+        { article_id: 5, date: '2022-06-20', strength_score: 0.5543, indicator_count: 3, narrative: 'narrative3', method: "Matched 3 indicators: extradition, ordered extradition" },
+        { article_id: 8, date: '2022-06-27', strength_score: 0.4436, indicator_count: 3, narrative: 'narrative3', method: "Matched 3 indicators: extradition sports, regulations extradition" }
+    ];
+
+    const p5ArticleData = [
+        { article_id: 2, date: '2022-06-13', strength_score: 0.2411, indicator_count: 2, narrative: 'narrative5', method: "Matched 2 indicators: charges alleged, face charges" },
+        { article_id: 3, date: '2022-06-13', strength_score: 0.3225, indicator_count: 3, narrative: 'narrative5', method: "Matched 3 indicators: charges paraguay, brought charges" },
+        { article_id: 4, date: '2022-06-14', strength_score: 0.1015, indicator_count: 1, narrative: 'narrative5', method: "Matched 1 indicator: charges" },
+        { article_id: 6, date: '2022-06-22', strength_score: 0.0724, indicator_count: 1, narrative: 'narrative5', method: "Matched 1 indicator: copies charges" },
+        { article_id: 10, date: '2022-07-18', strength_score: 0.0515, indicator_count: 1, narrative: 'narrative5', method: "Matched 1 indicator: sharing charges" }
+    ];
+
+    const allArticles = [...p1ArticleData, ...p2ArticleData, ...p3ArticleData, ...p5ArticleData];
+
+    // Get unique sorted dates
+    const uniqueDates = Array.from(new Set(allArticles.map(d => d.date))).sort((a,b) => new Date(a)-new Date(b));
+
+    // Narrative indexes for the second chart (Narrative Strength Comparison)
+    const narrativeMapping = { narrative1: 1, narrative2: 2, narrative3: 3, narrative5: 4 };
+
+    // Convert data for Narrative Correlation Analysis (stacked chart)
+    const articlesById = {};
+    allArticles.forEach(a => {
+        if(!articlesById[a.article_id]) {
+            articlesById[a.article_id] = { date: a.date, narratives: new Set() };
+        }
+        articlesById[a.article_id].narratives.add(a.narrative);
+    });
+
+    const dateMap = {};
+    for (let articleId in articlesById) {
+        const rec = articlesById[articleId];
+        const d = rec.date;
+        if(!dateMap[d]) {
+            dateMap[d] = { date: d, narrative1:0, narrative2:0, narrative3:0, narrative5:0 };
+        }
+        rec.narratives.forEach(n => { dateMap[d][n]++; });
+    }
+    const stackedData = Object.values(dateMap);
+    stackedData.sort((a,b) => new Date(a.date) - new Date(b.date));
+
+    const strengthToOpacity = s => Math.min(1, Math.max(0.1, s / 1.4));
+
+    const CustomTooltip = ({ active, payload }) => {
+        if (active && payload && payload.length) {
+            const data = payload[0].payload;
+            return (
+                <div style={{ backgroundColor: 'white', padding: '10px', border: '1px solid #ccc' }}>
+                    <p>Article {data.article_id}</p>
+                    <p>Date: {data.date}</p>
+                    <p>Strength: {data.strength_score ? data.strength_score.toFixed(4) : 'N/A'}</p>
+                    <p>Indicators: {data.indicator_count ?? 'N/A'}</p>
+                    <p>{data.method ?? ''}</p>
+                </div>
+            );
+        }
+        return null;
+    };
+
+    const NewVisualizations = () => {
+        return (
+            <>
+                <h1>1) Cross-Narrative Timeline View</h1>
+                {/* 
+                  X: date (category)
+                  Y: strength_score
+                  Color: narrative
+                  Size: indicator_count
+                */}
+                <div className="chart-container">
+                    <ResponsiveContainer width="100%" height={400}>
+                        <ScatterChart margin={{ top: 20, right: 20, bottom: 40, left: 20 }}>
+                            <CartesianGrid />
+                            <XAxis 
+                                type="category" 
+                                dataKey="date" 
+                                allowDuplicatedCategory={false}
+                                name="Date"
+                                label={{ value: 'Date', position: 'bottom' }}
+                                ticks={uniqueDates}
+                            />
+                            <YAxis 
+                                type="number" 
+                                dataKey="strength_score" 
+                                name="Strength Score"
+                                domain={[0, 1.5]}
+                                label={{ value: 'Strength Score', angle: -90, position: 'insideLeft' }}
+                            />
+                            <Tooltip content={<CustomTooltip />} cursor={{ strokeDasharray: '3 3' }}/>
+                            <Legend />
+
+                            <Scatter 
+                                name="Articles" 
+                                data={allArticles}
+                                shape={(props)=>{
+                                    const {cx, cy, payload} = props;
+                                    const radius = payload.indicator_count * 3;
+                                    return <circle cx={cx} cy={cy} r={radius} fill={narrativeColors[payload.narrative]} fillOpacity={0.7}/>;
+                                }}
+                            />
+                        </ScatterChart>
+                    </ResponsiveContainer>
+                </div>
+
+
+                <h1>2) Narrative Strength Comparison (Bubble Chart)</h1>
+                {/*
+                  X: date (category)
+                  Y: narrative (numeric mapping)
+                  Bubble size: indicator_count
+                  Color: narrative
+                  Opacity: strength_score
+                */}
+                <div className="chart-container">
+                    <ResponsiveContainer width="100%" height={400}>
+                        <ScatterChart margin={{ top: 20, right: 20, bottom: 40, left: 80 }}>
+                            <CartesianGrid />
+                            <XAxis 
+                                type="category" 
+                                dataKey="date"
+                                allowDuplicatedCategory={false}
+                                label={{ value: 'Date', position: 'bottom' }}
+                                ticks={uniqueDates}
+                            />
+                            <YAxis
+                                type="number"
+                                dataKey="narrativeY"
+                                domain={[0.5,4.5]}
+                                ticks={[1,2,3,4]}
+                                tickFormatter={(val)=>
+                                    Object.keys(narrativeMapping).find(key=>narrativeMapping[key]===val)
+                                }
+                                name="Narrative"
+                                label={{ value: 'Narrative', angle: -90, position: 'insideLeft' }}
+                            />
+                            <Tooltip content={<CustomTooltip />} cursor={{ strokeDasharray: '3 3' }}/>
+                            <Legend />
+
+                            <Scatter 
+                                name="Narratives"
+                                data={allArticles.map(d=>({...d, narrativeY: narrativeMapping[d.narrative]}))}
+                                shape={(props)=>{
+                                    const {cx, cy, payload} = props;
+                                    const radius = payload.indicator_count * 3;
+                                    const opacity = strengthToOpacity(payload.strength_score);
+                                    return <circle cx={cx} cy={cy} r={radius} fill={narrativeColors[payload.narrative]} fillOpacity={opacity}/>;
+                                }}
+                            />
+                        </ScatterChart>
+                    </ResponsiveContainer>
+                </div>
+
+
+                <h1>3) Narrative Correlation Analysis</h1>
+                {/*
+                  Stacked Bar Chart by date:
+                  X: date (category)
+                  Y: stacked count of narratives
+                */}
+                <div className="chart-container">
+                    <ResponsiveContainer width="100%" height={400}>
+                        <ComposedChart data={stackedData} margin={{ top: 20, right: 20, bottom: 40, left: 20 }}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis 
+                                dataKey="date"
+                                label={{ value: 'Date', position: 'bottom' }}
+                                ticks={uniqueDates}
+                            />
+                            <YAxis 
+                                label={{ value: 'Count of Narrative Appearances', angle: -90, position: 'insideLeft' }}
+                                allowDecimals={false}
+                            />
+                            <Tooltip formatter={(val, name) => [val, name]} />
+                            <Legend />
+
+                            <Bar dataKey="narrative1" stackId="a" fill={narrativeColors.narrative1} name="N1" />
+                            <Bar dataKey="narrative2" stackId="a" fill={narrativeColors.narrative2} name="N2" />
+                            <Bar dataKey="narrative3" stackId="a" fill={narrativeColors.narrative3} name="N3" />
+                            <Bar dataKey="narrative5" stackId="a" fill={narrativeColors.narrative5} name="N5" />
+                        </ComposedChart>
+                    </ResponsiveContainer>
+                    <p style={{textAlign:'center'}}>
+                        Dates with multiple narratives stacked show co-occurrence. Larger stacks = higher correlation.
+                    </p>
+                </div>
+
+
+                <h1>4) Indicator Efficiency Analysis</h1>
+                {/*
+                  Scatter: X=indicator_count, Y=strength_score, color by narrative
+                */}
+                <div className="chart-container">
+                    <ResponsiveContainer width="100%" height={400}>
+                        <ScatterChart margin={{ top: 20, right: 20, bottom: 40, left: 40 }}>
+                            <CartesianGrid />
+                            <XAxis 
+                                type="number"
+                                dataKey="indicator_count"
+                                domain={[0,8]}
+                                label={{ value: 'Indicator Count', position: 'bottom' }}
+                            />
+                            <YAxis 
+                                type="number"
+                                dataKey="strength_score"
+                                domain={[0,1.5]}
+                                label={{ value: 'Strength Score', angle: -90, position: 'insideLeft' }}
+                            />
+                            <Tooltip content={<CustomTooltip />} cursor={{ strokeDasharray: '3 3' }}/>
+                            <Legend />
+
+                            {Object.keys(narrativeColors).map(narr => {
+                                const data = allArticles.filter(a=>a.narrative===narr);
+                                return (
+                                    <Scatter 
+                                        key={narr}
+                                        name={narr}
+                                        data={data}
+                                        fill={narrativeColors[narr]}
+                                        shape="circle"
+                                    />
+                                );
+                            })}
+
+                            <ReferenceLine x={4} stroke="#aaa" strokeDasharray="3 3" label="Mid Indicator Count" />
+                            <ReferenceLine y={0.75} stroke="#aaa" strokeDasharray="3 3" label="Mid Strength" />
+                        </ScatterChart>
+                    </ResponsiveContainer>
+                    <p style={{textAlign:'center'}}>
+                        This scatter shows how strength score relates to indicator count for each narrative.
+                    </p>
+                </div>
+            </>
+        );
+    };
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<NewVisualizations />);
+</script>
+
+</body>
+</html>

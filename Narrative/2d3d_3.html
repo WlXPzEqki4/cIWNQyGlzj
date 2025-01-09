@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Concept Network Test</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <!-- Dependencies -->
+  <script
+    crossorigin
+    src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.development.js">
+  </script>
+  <script
+    crossorigin
+    src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.development.js">
+  </script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+
+  <style>
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      font-family: Arial, sans-serif;
+    }
+    .viz-container {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    // Destructure React hooks in a plain script environment
+    const { useRef, useEffect } = React;
+
+    // ----------------------------------------------------
+    // 2D Visualization (Unchanged)
+    // ----------------------------------------------------
+    function ConceptNetwork2D() {
+      const svgRef = useRef();
+
+      // Define concept data
+      const nodes = [
+        // Core concepts
+        { id: "COCAINE", group: 1, weight: 0.551048, radius: 40 },
+        { id: "SEIZURE", group: 1, weight: 0.364581, radius: 35 },
+        { id: "INVESTIGATION", group: 2, weight: 0.424509, radius: 30 },
+        { id: "QUANTITY", group: 3, weight: 0.383739, radius: 30 },
+        { id: "METHOD", group: 4, weight: 0.344153, radius: 25 },
+        { id: "LOCATION", group: 5, weight: 0.429805, radius: 25 },
+        
+        // Sub-concepts
+        { id: "tons", group: 3, weight: 0.2, radius: 15 },
+        { id: "kilos", group: 3, weight: 0.2, radius: 15 },
+        { id: "hidden", group: 4, weight: 0.2, radius: 15 },
+        { id: "load", group: 4, weight: 0.2, radius: 15 },
+        { id: "europe", group: 5, weight: 0.2, radius: 15 }
+      ];
+
+      const links = [
+        // Core concept connections
+        { source: "COCAINE", target: "SEIZURE", value: 5 },
+        { source: "COCAINE", target: "QUANTITY", value: 4 },
+        { source: "COCAINE", target: "METHOD", value: 3 },
+        { source: "COCAINE", target: "LOCATION", value: 3 },
+        
+        // Sub-concept connections
+        { source: "QUANTITY", target: "tons", value: 2 },
+        { source: "QUANTITY", target: "kilos", value: 2 },
+        { source: "METHOD", target: "hidden", value: 2 },
+        { source: "METHOD", target: "load", value: 2 },
+        { source: "LOCATION", target: "europe", value: 2 }
+      ];
+
+      useEffect(() => {
+        const width = 800;
+        const height = 600;
+
+        // Clear any existing SVG content
+        d3.select(svgRef.current).selectAll("*").remove();
+
+        // Create the SVG container
+        const svg = d3.select(svgRef.current)
+          .attr("width", width)
+          .attr("height", height);
+
+        // Create force simulation
+        const simulation = d3.forceSimulation(nodes)
+          .force("link", d3.forceLink(links).id(d => d.id))
+          .force("charge", d3.forceManyBody().strength(-400))
+          .force("center", d3.forceCenter(width / 2, height / 2));
+
+        // Create the links
+        const link = svg.append("g")
+          .selectAll("line")
+          .data(links)
+          .join("line")
+          .attr("stroke", "#999")
+          .attr("stroke-opacity", 0.6)
+          .attr("stroke-width", d => Math.sqrt(d.value));
+
+        // Create nodes with different colours based on group
+        const color = d3.scaleOrdinal(d3.schemeCategory10);
+
+        // Drag functions
+        function drag(simulation) {
+          function dragstarted(event) {
+            if (!event.active) simulation.alphaTarget(0.3).restart();
+            event.subject.fx = event.subject.x;
+            event.subject.fy = event.subject.y;
+          }
+          
+          function dragged(event) {
+            event.subject.fx = event.x;
+            event.subject.fy = event.y;
+          }
+          
+          function dragended(event) {
+            if (!event.active) simulation.alphaTarget(0);
+            event.subject.fx = null;
+            event.subject.fy = null;
+          }
+          
+          return d3.drag()
+            .on("start", dragstarted)
+            .on("drag", dragged)
+            .on("end", dragended);
+        }
+
+        // Create node groups
+        const node = svg.append("g")
+          .selectAll("g")
+          .data(nodes)
+          .join("g")
+          .call(drag(simulation));
+
+        // Add circles to nodes
+        node.append("circle")
+          .attr("r", d => d.radius)
+          .attr("fill", d => color(d.group))
+          .attr("fill-opacity", 0.7);
+
+        // Add labels to nodes
+        node.append("text")
+          .text(d => d.id)
+          .attr("x", 0)
+          .attr("y", d => d.radius + 12)
+          .attr("text-anchor", "middle")
+          .attr("fill", "#333")
+          .style("font-size", "12px");
+
+        // Add titles for hover
+        node.append("title")
+          .text(d => `${d.id}\nWeight: ${d.weight}`);
+
+        // Update positions on each tick
+        simulation.on("tick", () => {
+          link
+            .attr("x1", d => d.source.x)
+            .attr("y1", d => d.source.y)
+            .attr("x2", d => d.target.x)
+            .attr("y2", d => d.target.y);
+
+          node
+            .attr("transform", d => `translate(${d.x},${d.y})`);
+        });
+      }, []);
+
+      return (
+        <div className="w-full h-96 bg-white rounded-lg shadow-lg p-4">
+          <h3 className="text-lg font-semibold mb-4">Narrative 1: Concept Network (2D)</h3>
+          <svg ref={svgRef} className="w-full h-full"></svg>
+        </div>
+      );
+    }
+    // ----------------------------------------------------
+    // Main App
+    // ----------------------------------------------------
+    function App() {
+      return (
+        <div className="container">
+          <h1>Narrative Concept Visualisations</h1>
+          <div className="viz-container">
+            <ConceptNetwork2D />
+          </div>
+        </div>
+      );
+    }
+
+    // Render the app
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>

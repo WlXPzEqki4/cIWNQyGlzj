@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Daily Route Visualization</title>
+<meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+<link href="https://api.mapbox.com/mapbox-gl-js/v3.8.0/mapbox-gl.css" rel="stylesheet">
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.8.0/mapbox-gl.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+<style>
+    body { margin: 0; padding: 0; }
+    #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+    .map-overlay {
+        font: 12px/20px 'Helvetica Neue', Arial, Helvetica, sans-serif;
+        position: absolute;
+        width: 200px;
+        top: 0;
+        left: 0;
+        padding: 10px;
+    }
+    .map-overlay .map-overlay-inner {
+        background-color: #fff;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        border-radius: 3px;
+        padding: 10px;
+        margin-bottom: 10px;
+    }
+    .map-overlay-inner select {
+        width: 100%;
+    }
+    .marker-time {
+        background-color: white;
+        border: 2px solid #666;
+        border-radius: 4px;
+        padding: 4px 8px;
+        font-size: 14px;
+        font-weight: bold;
+        pointer-events: none;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        min-width: 60px;
+        text-align: center;
+    }
+</style>
+</head>
+<body>
+<div id="map"></div>
+
+<div class="map-overlay">
+    <div class="map-overlay-inner">
+        <label>Select Date</label>
+        <select id="dateSelect"></select>
+        
+        <div style="margin-top: 10px;">
+            <label style="display: block; margin-bottom: 5px;">Map Style:</label>
+            <select id="mapStyle" style="margin-bottom: 10px;">
+                <option value="mapbox://styles/mapbox/streets-v12">Streets</option>
+                <option value="mapbox://styles/mapbox/satellite-v9">Satellite</option>
+                <option value="mapbox://styles/mapbox/satellite-streets-v12">Satellite with Streets</option>
+                <option value="mapbox://styles/mapbox/light-v11">Light</option>
+                <option value="mapbox://styles/mapbox/dark-v11">Dark</option>
+                <option value="mapbox://styles/mapbox/navigation-day-v1">Navigation Day</option>
+                <option value="mapbox://styles/mapbox/navigation-night-v1">Navigation Night</option>
+            </select>
+
+            <label style="display: block; margin-bottom: 5px;">Display Options:</label>
+            <div>
+                <input type="checkbox" id="showTimeMarkers" checked>
+                <label for="showTimeMarkers">Show Time Labels</label>
+            </div>
+            <div>
+                <input type="checkbox" id="showStartEnd" checked>
+                <label for="showStartEnd">Show Start/End Points</label>
+            </div>
+            <div>
+                <input type="checkbox" id="show3DBuildings">
+                <label for="show3DBuildings">Show 3D Buildings</label>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+mapboxgl.accessToken = 'pk.eyJ1IjoiamNkZW50b24yMDUxIiwiYSI6ImNtMzVkZXJudTA5ejkya3B5NDU4Z2MyeHQifQ.aUk4eH5k3JC45Foxcbe2qQ';
+
+// Initialize map
+// const map = new mapboxgl.Map({
+//     container: 'map',
+//     style: 'mapbox://styles/mapbox/streets-v12',
+//     center: [55.38279, 25.08532],
+//     zoom: 15
+// });
+
+const map = new mapboxgl.Map({
+    container: 'map',
+    style: 'mapbox://styles/mapbox/streets-v12',
+    center: [55.38279, 25.08532],
+    zoom: 15,
+    pitch: 0, // Initial pitch
+    bearing: 0
+});
+
+
+
+
+
+
+// Function to handle 3D buildings layer
+function toggle3DBuildings(show) {
+    if (show) {
+        if (!map.getLayer('3d-buildings')) {
+            map.addLayer({
+                'id': '3d-buildings',
+                'source': 'composite',
+                'source-layer': 'building',
+                'filter': ['==', 'extrude', 'true'],
+                'type': 'fill-extrusion',
+                'minzoom': 15,
+                'paint': {
+                    'fill-extrusion-color': '#aaa',
+                    'fill-extrusion-height': [
+                        'interpolate',
+                        ['linear'],
+                        ['zoom'],
+                        15,
+                        0,
+                        15.05,
+                        ['get', 'height']
+                    ],
+                    'fill-extrusion-base': [
+                        'interpolate',
+                        ['linear'],
+                        ['zoom'],
+                        15,
+                        0,
+                        15.05,
+                        ['get', 'min_height']
+                    ],
+                    'fill-extrusion-opacity': 0.6
+                }
+            });
+        }
+    } else {
+        if (map.getLayer('3d-buildings')) {
+            map.removeLayer('3d-buildings');
+        }
+    }
+}
+
+// Add event listeners for style and 3D buildings controls
+document.addEventListener('DOMContentLoaded', () => {
+    // Existing listeners...
+
+    // Map style change listener
+    document.getElementById('mapStyle').addEventListener('change', (e) => {
+        const style = e.target.value;
+        const was3DEnabled = document.getElementById('show3DBuildings').checked;
+        
+        map.setStyle(style);
+        
+        // Re-add route and markers after style change
+        map.once('style.load', () => {
+            // Re-add the route layer
+            const currentDate = document.getElementById('dateSelect').value;
+            loadCSV().then(data => updateRoute(data, currentDate));
+            
+            // Re-enable 3D buildings if they were enabled
+            if (was3DEnabled) {
+                toggle3DBuildings(true);
+            }
+        });
+    });
+
+    // 3D buildings toggle listener
+    document.getElementById('show3DBuildings').addEventListener('change', (e) => {
+        toggle3DBuildings(e.target.checked);
+        
+        // Adjust pitch when 3D is enabled/disabled
+        if (e.target.checked) {
+            map.easeTo({
+                pitch: 60,
+                duration: 1000
+            });
+        } else {
+            map.easeTo({
+                pitch: 0,
+                duration: 1000
+            });
+        }
+    });
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// Store markers globally
+let timeMarkers = [];
+let startEndMarkers = [];
+
+// Load and process CSV data
+async function loadCSV() {
+    const response = await fetch('new_df.csv');
+    const text = await response.text();
+    
+    return new Promise(resolve => {
+        Papa.parse(text, {
+            header: true,
+            complete: function(results) {
+                resolve(results.data);
+            }
+        });
+    });
+}
+
+// Clear existing markers
+function clearMarkers() {
+    timeMarkers.forEach(marker => marker.remove());
+    timeMarkers = [];
+    startEndMarkers.forEach(marker => marker.remove());
+    startEndMarkers = [];
+}
+
+// Create time marker element
+function createTimeMarker(time) {
+    const el = document.createElement('div');
+    el.className = 'marker-time';
+    el.textContent = time;
+    return el;
+}
+
+// Function to toggle time markers visibility
+function toggleTimeMarkers(show) {
+    timeMarkers.forEach(marker => {
+        const el = marker.getElement();
+        el.style.display = show ? 'block' : 'none';
+    });
+}
+
+// Function to create start/end markers
+function createStartEndMarkers(coordinates, timestamps) {
+    // Clear existing start/end markers
+    startEndMarkers.forEach(marker => marker.remove());
+    startEndMarkers = [];
+
+    if (coordinates.length < 2) return;
+
+    // Start marker (red)
+    const startMarker = new mapboxgl.Marker({
+        color: '#FF0000',
+        scale: 2
+    })
+        .setLngLat(coordinates[0])
+        .setPopup(new mapboxgl.Popup().setText(`Start: ${timestamps[0]}`))
+        .addTo(map);
+
+    // End marker (blue)
+    const endMarker = new mapboxgl.Marker({
+        color: '#0000FF',
+        scale: 2
+    })
+        .setLngLat(coordinates[coordinates.length - 1])
+        .setPopup(new mapboxgl.Popup().setText(`End: ${timestamps[timestamps.length - 1]}`))
+        .addTo(map);
+
+    startEndMarkers.push(startMarker, endMarker);
+}
+
+// Process data and populate dropdown
+async function initializeData() {
+    const data = await loadCSV();
+    
+    // Get unique dates
+    const uniqueDates = [...new Set(data.map(row => row.date))];
+    
+    // Populate dropdown
+    const dateSelect = document.getElementById('dateSelect');
+    uniqueDates.sort().forEach(date => {
+        const option = document.createElement('option');
+        option.value = date;
+        option.text = date;
+        dateSelect.appendChild(option);
+    });
+    
+    // Add change event listener
+    dateSelect.addEventListener('change', () => updateRoute(data, dateSelect.value));
+    
+    // Trigger initial update if there are dates
+    if (uniqueDates.length > 0) {
+        updateRoute(data, uniqueDates[0]);
+    }
+}
+
+// Update route for selected date
+function updateRoute(data, selectedDate) {
+    // Clear existing markers
+    clearMarkers();
+
+    // Filter data for selected date and sort by timestamp
+    const dayData = data
+        .filter(row => row.date === selectedDate)
+        .sort((a, b) => {
+            const timeA = new Date(`${a.date} ${a.TIMESTAMP.split(' ')[1]}`);
+            const timeB = new Date(`${b.date} ${b.TIMESTAMP.split(' ')[1]}`);
+            return timeA - timeB;
+        });
+
+    const coordinates = [];
+    const timestamps = [];
+
+    // Create route coordinates and add markers
+    dayData.forEach(row => {
+        const lng = parseFloat(row.longitude);
+        const lat = parseFloat(row.latitude);
+        const time = row.TIMESTAMP.split(' ')[1];
+
+        coordinates.push([lng, lat]);
+        timestamps.push(time);
+
+        // Create time marker if enabled
+        if (document.getElementById('showTimeMarkers').checked) {
+            const marker = new mapboxgl.Marker({
+                element: createTimeMarker(time),
+                anchor: 'bottom'
+            })
+                .setLngLat([lng, lat])
+                .addTo(map);
+            
+            timeMarkers.push(marker);
+        }
+    });
+
+    // Create start/end markers if enabled
+    if (document.getElementById('showStartEnd').checked) {
+        createStartEndMarkers(coordinates, timestamps);
+    }
+
+    // Update map source and layer
+    if (map.getSource('route')) {
+        map.getSource('route').setData({
+            type: 'Feature',
+            properties: {},
+            geometry: {
+                type: 'LineString',
+                coordinates: coordinates
+            }
+        });
+    } else {
+        map.addSource('route', {
+            type: 'geojson',
+            lineMetrics: true,
+            data: {
+                type: 'Feature',
+                properties: {},
+                geometry: {
+                    type: 'LineString',
+                    coordinates: coordinates
+                }
+            }
+        });
+
+        map.addLayer({
+            id: 'route',
+            type: 'line',
+            source: 'route',
+            layout: {
+                'line-join': 'round',
+                'line-cap': 'round'
+            },
+            paint: {
+                'line-width': 6,
+                'line-gradient': [
+                    'interpolate',
+                    ['linear'],
+                    ['line-progress'],
+                    0, '#FF0000',
+                    1, '#0000FF'
+                ]
+            }
+        });
+    }
+
+    // Fit map to route bounds
+    const bounds = coordinates.reduce((bounds, coord) => {
+        return bounds.extend(coord);
+    }, new mapboxgl.LngLatBounds(coordinates[0], coordinates[0]));
+
+    map.fitBounds(bounds, {
+        padding: 50
+    });
+}
+
+// Add event listeners for checkboxes
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('showTimeMarkers').addEventListener('change', (e) => {
+        if (e.target.checked) {
+            timeMarkers.forEach(marker => marker.addTo(map));
+        } else {
+            timeMarkers.forEach(marker => marker.remove());
+        }
+    });
+
+    document.getElementById('showStartEnd').addEventListener('change', (e) => {
+        startEndMarkers.forEach(marker => {
+            if (e.target.checked) {
+                marker.addTo(map);
+            } else {
+                marker.remove();
+            }
+        });
+    });
+});
+
+// Initialize when map loads
+map.on('load', initializeData);
+</script>
+
+</body>
+</html>

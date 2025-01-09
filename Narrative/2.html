@@ -1,0 +1,538 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Case Timeline Evolution</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            background: #f5f5f5;
+            color: #333;
+            overflow-x: auto;
+            min-height: 100vh;
+        }
+
+        .header-container {
+            background: linear-gradient(135deg, #ff4646 0%, #ff7676 100%);
+            padding: 40px 20px;
+            text-align: center;
+            position: fixed;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+            width: 100%;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .main-title {
+            font-size: 2.5em;
+            color: white;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-weight: 800;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .subtitle {
+            color: rgba(255,255,255,0.9);
+            font-size: 1.1em;
+            font-weight: 300;
+        }
+
+        .container {
+            width: 2000px;
+            margin: 180px auto 40px;
+            padding: 20px;
+        }
+
+        .stats-container {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 40px;
+            flex-wrap: wrap;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            text-align: center;
+            min-width: 200px;
+            transition: transform 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .stat-value {
+            font-size: 2em;
+            color: #ff4646;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .chart-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin: 0 auto 40px;
+            max-width: 1000px;
+            height: 400px;
+        }
+
+        .mindmap {
+            display: flex;
+            align-items: flex-start;
+            gap: 40px;
+            padding: 20px;
+            margin-top: 120px;
+        }
+
+        .timeline-node {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            width: 350px;
+            position: relative;
+            opacity: 0;
+            transform: translateX(-20px);
+            animation: slideIn 0.5s forwards;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+        }
+
+        .timeline-node:hover {
+            transform: translateY(-5px);
+        }
+
+        .timeline-node::after {
+            content: '';
+            position: absolute;
+            right: -40px;
+            top: 50%;
+            width: 40px;
+            height: 2px;
+            background: #ff4646;
+            animation: expandLine 0.5s forwards;
+            transform-origin: left;
+        }
+
+        .timeline-node:last-child::after {
+            display: none;
+        }
+
+        .node-title {
+            font-weight: bold;
+            color: #ff4646;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .node-period {
+            color: #666;
+            font-size: 0.9em;
+            margin-bottom: 15px;
+        }
+
+        .node-summary {
+            margin-bottom: 15px;
+            font-weight: 500;
+        }
+
+        .node-description {
+            font-size: 0.9em;
+            color: #555;
+            margin-bottom: 15px;
+        }
+
+        .developments {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            display: none;
+        }
+
+        .timeline-node.expanded .developments {
+            display: block;
+        }
+
+        .development-item {
+            background: #f8f8f8;
+            padding: 12px;
+            margin-bottom: 10px;
+            border-radius: 6px;
+            font-size: 0.9em;
+            opacity: 0;
+            transform: translateY(10px);
+            animation: slideUpFade 0.3s forwards;
+            position: relative;
+            padding-left: 20px;
+        }
+
+        .development-item::before {
+            content: '•';
+            position: absolute;
+            left: 8px;
+            color: #ff4646;
+        }
+
+        .expand-icon {
+            color: #ff4646;
+            font-size: 1.2em;
+            transition: transform 0.3s ease;
+        }
+
+        .timeline-node.expanded .expand-icon {
+            transform: rotate(180deg);
+        }
+
+        .chat-widget-wrapper {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+            display: inline-block;
+        }
+
+        .chat-widget-wrapper:hover::before {
+            content: "Chat with an AI assistant about this case. The assistant has open source reporting knowledge about the BENITEZ case timeline from 2022-2024.";
+            position: absolute;
+            bottom: 100%;
+            right: 0;
+            width: 300px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 14px;
+            margin-bottom: 150px;  /* Increased from 10px to 50px to move it higher */
+            z-index: 10000;
+        }
+
+        .chat-widget-wrapper:hover::after {
+            content: '';
+            position: absolute;
+            bottom: 100%;
+            right: 20px;
+            border: 8px solid transparent;
+            border-top: 8px solid rgba(0, 0, 0, 0.8);
+            margin-bottom: 42px;  /* Increased to match tooltip (50px - 8px for arrow) */
+            z-index: 10000;
+        }
+
+        @keyframes slideIn {
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes expandLine {
+            from { transform: scaleX(0); }
+            to { transform: scaleX(1); }
+        }
+
+        @keyframes slideUpFade {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @media (max-width: 2100px) {
+            .container {
+                width: 1800px;
+            }
+        }
+
+        @media (max-width: 1900px) {
+            .container {
+                width: 1600px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header-container">
+        <h1 class="main-title">BENITEZ Case Timeline Evolution</h1>
+        <div class="subtitle">2022-2024 Investigation Progress</div>
+    </div>
+
+    <div class="container">
+        <div class="stats-container">
+            <div class="stat-card">
+                <div class="stat-value">16</div>
+                <div class="stat-label">Tonnes of Cocaine Seized</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">3</div>
+                <div class="stat-label">Countries Involved</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">24</div>
+                <div class="stat-label">Months Duration</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">5</div>
+                <div class="stat-label">Major Case Phases</div>
+            </div>
+        </div>
+
+        <div class="chart-container">
+            <canvas id="progressChart"></canvas>
+        </div>
+
+        <div class="mindmap">
+            <div class="timeline-node" style="animation-delay: 0s;">
+                <div class="node-title">
+                    Initial Crime & Investigation
+                    <span class="expand-icon">▼</span>
+                </div>
+                <div class="node-period">March 2022</div>
+                <div class="node-summary">Discovery of massive cocaine consignment in Germany</div>
+                <div class="node-description">The story begins with the seizure of over 16 tonnes of cocaine in Hamburg, Germany. Investigations reveal links to Diego Benítez and his company Pinturas Tupa SA.</div>
+                <div class="developments">
+                    <div class="development-item">Over 16 tonnes of cocaine seized in Germany</div>
+                    <div class="development-item">Initial links to businessman Diego Benítez uncovered</div>
+                    <div class="development-item">Law enforcement agencies across Europe coordinate investigation</div>
+                </div>
+            </div>
+
+            <div class="timeline-node" style="animation-delay: 0.2s;">
+                <div class="node-title">
+                    Arrest & Initial Proceedings
+                    <span class="expand-icon">▼</span>
+                </div>
+                <div class="node-period">June 2022</div>
+                <div class="node-summary">Suspect apprehended in UAE, starting extradition talks</div>
+                <div class="node-description">Following the drug seizure, Benítez is arrested in the UAE. Initial extradition discussions begin between Paraguay and international authorities.</div>
+                <div class="developments">
+                    <div class="development-item">Diego Benítez arrested in the UAE</div>
+                    <div class="development-item">Preliminary hearings on extradition routes commence</div>
+                    <div class="development-item">Early cooperation established among prosecuting nations</div>
+                </div>
+            </div>
+
+            <div class="timeline-node" style="animation-delay: 0.4s;">
+                <div class="node-title">
+                    Extradition Process
+                    <span class="expand-icon">▼</span>
+                </div>
+                <div class="node-period">July–Dec 2022</div>
+                <div class="node-summary">Negotiations and legal hurdles among multiple jurisdictions</div>
+                <div class="node-description">Multiple extradition requests are filed, leading to asset seizures and prolonged jurisdictional disputes. These complexities delay a straightforward resolution.</div>
+                <div class="developments">
+                    <div class="development-item">Multiple countries file competing extradition requests</div>
+                    <div class="development-item">Asset seizures linked to alleged criminal networks</div>
+                    <div class="development-item">Negotiations stall due to jurisdictional complexities</div>
+                </div>
+            </div>
+
+            <div class="timeline-node" style="animation-delay: 0.6s;">
+                <div class="node-title">
+                    Legal Complications
+                    <span class="expand-icon">▼</span>
+                </div>
+                <div class="node-period">2023</div>
+                <div class="node-summary">Judicial reviews, emerging evidence, and delays</div>
+                <div class="node-description">Cross-border appeals and judicial reviews dominate. Conflicting legal interpretations and emerging evidence further delay extradition progress.</div>
+                <div class="developments">
+                    <div class="development-item">Judicial reviews and cross-border appeals intensify</div>
+                    <div class="development-item">Conflicting legal interpretations cause delays</div>
+                    <div class="development-item">New evidence shifts strategic priorities</div>
+                </div>
+            </div>
+
+            <div class="timeline-node" style="animation-delay: 0.8s;">
+                <div class="node-title">
+                    Resolution & Charges
+                    <span class="expand-icon">▼</span>
+                </div>
+                <div class="node-period">2024</div>
+                <div class="node-summary">Extradition confirmed and charges finalised</div>
+                <div class="node-description">Final extradition agreements are confirmed. Charges for drug trafficking, money laundering, and criminal association are refined as the case nears prosecution.</div>
+                <div class="developments">
+                    <div class="development-item">Final extradition feasibility confirmed by international tribunals</div>
+                    <div class="development-item">Conclusive charges refined, preparing for trial</div>
+                    <div class="development-item">Complex international chapter moves toward closure</div>
+                </div>
+            </div>
+        </div>
+
+
+        <div class="chat-widget-wrapper">
+            <!-- ElevenLabs Conversation Widget -->
+            <elevenlabs-convai agent-id="DfAIaWjGBfgPJXGGkAg0"></elevenlabs-convai>
+            <script src="https://elevenlabs.io/convai-widget/index.js" async type="text/javascript"></script>
+        </div>
+    
+    
+    
+
+
+
+
+
+    </div>
+
+    <script>
+        // Initialize combined bar and line chart
+        const ctx = document.getElementById('progressChart').getContext('2d');
+
+        // Convert week numbers to dates for better x-axis display
+        const data = [
+            { year: 2022, week: 11, count: 1 }, { year: 2022, week: 23, count: 1 },
+            { year: 2022, week: 24, count: 3 }, { year: 2022, week: 25, count: 2 },
+            { year: 2022, week: 26, count: 1 }, { year: 2022, week: 28, count: 1 },
+            { year: 2022, week: 29, count: 1 }, { year: 2022, week: 44, count: 1 },
+            { year: 2022, week: 50, count: 1 }, { year: 2023, week: 5, count: 1 },
+            { year: 2023, week: 47, count: 3 }, { year: 2023, week: 48, count: 1 },
+            { year: 2024, week: 5, count: 1 }, { year: 2024, week: 34, count: 1 },
+            { year: 2024, week: 40, count: 1 }
+        ];
+
+        // Function to format date labels
+        function getDateFromWeek(year, week) {
+            const firstDayOfYear = new Date(year, 0, 1);
+            return new Date(firstDayOfYear.getTime() + (week * 7 * 24 * 60 * 60 * 1000));
+        }
+
+        // Create smoothed line data
+        function createSmoothedLine(data) {
+            const smoothedData = [];
+            const windowSize = 3;
+            
+            for (let i = 0; i < data.length; i++) {
+                let sum = 0;
+                let count = 0;
+                
+                for (let j = Math.max(0, i - windowSize); j < Math.min(data.length, i + windowSize + 1); j++) {
+                    sum += data[j].count;
+                    count++;
+                }
+                
+                smoothedData.push({
+                    x: getDateFromWeek(data[i].year, data[i].week),
+                    y: sum / count
+                });
+            }
+            
+            return smoothedData;
+        }
+
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                datasets: [
+                    {
+                        label: 'Weekly Articles',
+                        data: data.map(d => ({
+                            x: getDateFromWeek(d.year, d.week),
+                            y: d.count
+                        })),
+                        backgroundColor: 'rgba(255, 70, 70, 0.5)',
+                        order: 2
+                    },
+                    {
+                        label: 'Trend',
+                        data: createSmoothedLine(data),
+                        type: 'line',
+                        borderColor: '#ff4646',
+                        backgroundColor: 'rgba(255, 70, 70, 0.1)',
+                        tension: 0.4,
+                        fill: true,
+                        pointRadius: 0,
+                        order: 1
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                animation: {
+                    duration: 2000,
+                    easing: 'easeInOutQuart'
+                },
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'Article Publication Pattern'
+                    }
+                },
+                scales: {
+                    x: {
+                        type: 'time',
+                        time: {
+                            unit: 'month',
+                            displayFormats: {
+                                month: 'MMM yyyy'
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: 'Date'
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Number of Articles'
+                        },
+                        ticks: {
+                            stepSize: 1
+                        }
+                    }
+                }
+            }
+        });
+
+        // Timeline node interactions
+        document.querySelectorAll('.timeline-node').forEach(node => {
+            node.addEventListener('click', () => {
+                node.classList.toggle('expanded');
+                
+                // Animate development items
+                const items = node.querySelectorAll('.development-item');
+                items.forEach((item, index) => {
+                    item.style.animationDelay = `${0.1 * (index + 1)}s`;
+                });
+            });
+        });
+    </script>
+
+    <!-- ElevenLabs Conversation Widget -->
+    <!-- <elevenlabs-convai agent-id="DfAIaWjGBfgPJXGGkAg0"></elevenlabs-convai>
+    <script src="https://elevenlabs.io/convai-widget/index.js" async type="text/javascript"></script> -->
+
+
+
+
+
+</body>
+</html>

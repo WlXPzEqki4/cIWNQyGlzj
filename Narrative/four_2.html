@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Article Patterns Analysis</title>
+    
+    <!-- React Dependencies -->
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.development.js"></script>
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.development.js"></script>
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/prop-types/15.8.1/prop-types.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/recharts/2.10.3/Recharts.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            padding: 20px;
+            background: #f5f5f5;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1, h2 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 40px;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .chart-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 40px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Article Patterns & Story Evolution</h1>
+
+        <h2>Narrative Indicators & Weights</h2>
+        <div class="chart-container" id="chart-container"></div>
+    </div>
+
+    <script type="text/babel">
+        const { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, LabelList, ResponsiveContainer, Cell } = window.Recharts;
+
+        const NarrativeFlow = () => {
+            const data = [
+                // Narrative 1
+                { indicator: "tons cocaine", weight: 0.551048, narrative: "narrative1" },
+                { indicator: "cocaine europe", weight: 0.429805, narrative: "narrative1" },
+                { indicator: "investigation", weight: 0.424509, narrative: "narrative1" },
+                { indicator: "kilos cocaine", weight: 0.383739, narrative: "narrative1" },
+                { indicator: "cocaine seized", weight: 0.364581, narrative: "narrative1" },
+                { indicator: "cocaine hidden", weight: 0.344153, narrative: "narrative1" },
+                { indicator: "seizures", weight: 0.252899, narrative: "narrative1" },
+                { indicator: "alleged cocaine", weight: 0.206691, narrative: "narrative1" },
+                { indicator: "load cocaine", weight: 0.173851, narrative: "narrative1" },
+                { indicator: "seizure", weight: 0.16595, narrative: "narrative1" },
+
+                // Narrative 2
+                { indicator: "arrest", weight: 0.622218, narrative: "narrative2" },
+                { indicator: "arrested", weight: 0.522979, narrative: "narrative2" },
+                { indicator: "international arrest", weight: 0.442146, narrative: "narrative2" },
+                { indicator: "arrest warrant", weight: 0.431221, narrative: "narrative2" },
+                { indicator: "tez arrested", weight: 0.27383, narrative: "narrative2" },
+                { indicator: "arrest judge", weight: 0.161944, narrative: "narrative2" },
+                { indicator: "arrested june", weight: 0.161944, narrative: "narrative2" },
+                { indicator: "learning arrest", weight: 0.161944, narrative: "narrative2" },
+                { indicator: "arrested year", weight: 0.160843, narrative: "narrative2" },
+                { indicator: "arrested carrying", weight: 0.153874, narrative: "narrative2" },
+
+                // Narrative 3
+                { indicator: "extradition", weight: 1.040092, narrative: "narrative3" },
+                { indicator: "extradition request", weight: 0.493924, narrative: "narrative3" },
+                { indicator: "extradition paraguay", weight: 0.343318, narrative: "narrative3" },
+                { indicator: "request extradition", weight: 0.336582, narrative: "narrative3" },
+                { indicator: "confirmed extradition", weight: 0.225154, narrative: "narrative3" },
+                { indicator: "extradition according", weight: 0.1996, narrative: "narrative3" },
+                { indicator: "extradition sports", weight: 0.18356, narrative: "narrative3" },
+                { indicator: "ordered extradition", weight: 0.154994, narrative: "narrative3" },
+                { indicator: "extradition compatriot", weight: 0.133981, narrative: "narrative3" },
+                { indicator: "regulations extradition", weight: 0.133981, narrative: "narrative3" },
+
+                // Narrative 5
+                { indicator: "charges", weight: 0.241108, narrative: "narrative5" },
+                { indicator: "charges alleged", weight: 0.101531, narrative: "narrative5" },
+                { indicator: "charges paraguay", weight: 0.080022, narrative: "narrative5" },
+                { indicator: "faces charges", weight: 0.080022, narrative: "narrative5" },
+                { indicator: "face charges", weight: 0.076242, narrative: "narrative5" },
+                { indicator: "charges national", weight: 0.0724, narrative: "narrative5" },
+                { indicator: "copies charges", weight: 0.0724, narrative: "narrative5" },
+                { indicator: "charges mega", weight: 0.0515, narrative: "narrative5" },
+                { indicator: "sharing charges", weight: 0.0515, narrative: "narrative5" },
+                { indicator: "brought charges", weight: 0.039263, narrative: "narrative5" }
+            ];
+
+            const dynamicHeight = data.length * 40; // Height multiplier (adjustable)
+            document.getElementById('chart-container').style.height = `${dynamicHeight}px`;
+
+            const narrativeColors = {
+                narrative1: "#ff4646",
+                narrative2: "#4666ff",
+                narrative3: "#46af46",
+                narrative4: "#9146ff",
+                narrative5: "#ff8c46"
+            };
+
+            return (
+                <ResponsiveContainer width="100%" height="100%">
+                    <BarChart layout="vertical" data={data} margin={{ top: 20, right: 20, left: 0, bottom: 20 }}                    >
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis type="number" domain={[0, 1.2]} tickFormatter={(tick) => tick.toFixed(2)} />
+                        <YAxis dataKey="indicator" type="category" width={250} />
+                        <Tooltip formatter={(value) => value.toFixed(3)} />
+                        <Bar dataKey="weight" name="Weight">
+                            <LabelList dataKey="weight" position="insideRight" fill="#fff" formatter={(value) => value.toFixed(3)} />
+                            {data.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={narrativeColors[entry.narrative]} />
+                            ))}
+                        </Bar>
+                    </BarChart>
+                </ResponsiveContainer>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('chart-container'));
+        root.render(<NarrativeFlow />);
+    </script>
+</body>
+</html>

@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pattern of Life Analysis</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/leaflet.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.heat/0.2.0/leaflet-heat.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/leaflet.css">
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }
+        .container { max-width: 1400px; margin: 0 auto; }
+        .dashboard { display: grid; gap: 20px; grid-template-columns: 1fr; }
+        .chart-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+        .card { background: white; border-radius: 10px; padding: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .full-width { grid-column: 1 / -1; }
+        #map { height: 400px; width: 100%; border-radius: 10px; }
+        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin: 20px 0; }
+        .stat-card { background: white; padding: 15px; border-radius: 8px; text-align: center; }
+        .stat-value { font-size: 24px; font-weight: bold; color: #2c5282; }
+        .stat-label { color: #666; font-size: 14px; }
+        .loading { display: none; text-align: center; padding: 20px; background: #ebf8ff; border-radius: 10px; margin-bottom: 20px; }
+        .chart-container { position: relative; height: 300px; width: 100%; }
+        .slider-container { margin: 10px 0; display: flex; align-items: center; gap: 10px; }
+        .slider-container input { flex-grow: 1; }
+        .slider-container label { font-size: 14px; color: #666; min-width: 60px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Pattern of Life Analysis</h1>
+        
+        <div id="loading" class="loading">Loading and processing data...</div>
+
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-value" id="totalRecords">-</div>
+                <div class="stat-label">Total Records</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="uniqueLocations">-</div>
+                <div class="stat-label">Unique Locations</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="dateRange">-</div>
+                <div class="stat-label">Date Range</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="mostActiveDay">-</div>
+                <div class="stat-label">Most Active Day</div>
+            </div>
+        </div>
+
+        <div class="dashboard">
+            <div class="card full-width">
+                <h2>Movement Heatmap</h2>
+                <div id="map"></div>
+            </div>
+            
+            <div class="chart-row">
+                <div class="card">
+                    <h2>Hourly Patterns</h2>
+                    <div class="chart-container">
+                        <canvas id="hourlyChart"></canvas>
+                    </div>
+                </div>
+                <div class="card">
+                    <h2>Weekly Patterns</h2>
+                    <div class="chart-container">
+                        <canvas id="weeklyChart"></canvas>
+                    </div>
+                </div>
+                <div class="card">
+                    <h2>Monthly Patterns</h2>
+                    <div class="chart-container">
+                        <canvas id="monthlyChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card full-width">
+                <h2>Activity Timeline</h2>
+                <div class="slider-container">
+                    <label>Bin Size:</label>
+                    <input type="range" id="binSlider" min="30" max="300" value="200" />
+                    <span id="binValue">200</span>
+                </div>
+                <div class="chart-container">
+                    <canvas id="timelineChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let map;
+        let charts = {};
+        
+        document.addEventListener('DOMContentLoaded', async () => {
+            initMap();
+            document.getElementById('loading').style.display = 'block';
+            try {
+                const response = await fetch('new_df.csv');
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                const csvContent = await response.text();
+                processCSV(csvContent);
+            } catch (error) {
+                console.error("Error reading file:", error);
+                document.getElementById('loading').textContent = 'Error loading data: ' + error.message;
+            }
+        });
+
+        function initMap() {
+            map = L.map('map').setView([25.2048, 55.2708], 10);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+            L.control.scale().addTo(map);
+        }
+
+        function processCSV(csvContent) {
+            Papa.parse(csvContent, {
+                header: true,
+                dynamicTyping: true,
+                skipEmptyLines: 'greedy',
+                complete: function(results) {
+                    if (results.data && results.data.length > 0) {
+                        try {
+                            processData(results.data);
+                            document.getElementById('loading').style.display = 'none';
+                        } catch (error) {
+                            console.error("Error processing data:", error);
+                            document.getElementById('loading').textContent = 'Error processing data: ' + error.message;
+                        }
+                    } else {
+                        document.getElementById('loading').textContent = 'No valid data found in file';
+                    }
+                },
+                error: function(error) {
+                    console.error("Parse error:", error);
+                    document.getElementById('loading').textContent = 'Error parsing data: ' + error.message;
+                }
+            });
+        }
+
+        function processData(data) {
+            window.fullData = data;
+            
+            document.getElementById('totalRecords').textContent = data.length.toLocaleString();
+            
+            const hourlyData = new Array(24).fill(0);
+            const weeklyData = Array(7).fill(0);
+            const monthlyData = Array(12).fill(0);
+            const locations = new Set();
+            const weekdays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+            let minDate = new Date();
+            let maxDate = new Date(0);
+            const heatmapData = [];
+            
+            data.forEach(row => {
+                if (row.latitude && row.longitude && row.TIMESTAMP) {
+                    const date = new Date(row.TIMESTAMP);
+                    
+                    hourlyData[date.getHours()]++;
+                    weeklyData[date.getDay()]++;
+                    monthlyData[date.getMonth()]++;
+                    
+                    locations.add(`${row.latitude.toFixed(3)},${row.longitude.toFixed(3)}`);
+                    
+                    if (date < minDate) minDate = date;
+                    if (date > maxDate) maxDate = date;
+                    
+                    heatmapData.push([row.latitude, row.longitude, 1]);
+                }
+            });
+
+            document.getElementById('uniqueLocations').textContent = locations.size.toLocaleString();
+            document.getElementById('dateRange').textContent = 
+                `${minDate.toLocaleDateString()} - ${maxDate.toLocaleDateString()}`;
+            
+            const maxWeekday = weeklyData.indexOf(Math.max(...weeklyData));
+            document.getElementById('mostActiveDay').textContent = weekdays[maxWeekday];
+
+            updateCharts(hourlyData, weeklyData, monthlyData, weekdays, months);
+            updateHeatmap(heatmapData);
+            updateTimelineChart(200);
+
+            const slider = document.getElementById('binSlider');
+            const binValue = document.getElementById('binValue');
+            slider.addEventListener('input', function() {
+                binValue.textContent = this.value;
+                updateTimelineChart(parseInt(this.value));
+            });
+        }
+
+        function updateTimelineChart(binSize) {
+            const data = window.fullData;
+            if (!data) return;
+
+            const dates = data
+                .map(row => new Date(row.TIMESTAMP))
+                .sort((a, b) => a - b);
+
+            const minDate = dates[0];
+            const maxDate = dates[dates.length - 1];
+            const timeRange = maxDate - minDate;
+            
+            const binCount = Math.ceil(timeRange / (binSize * 3600 * 1000));
+            const bins = new Array(binCount).fill(0);
+
+            dates.forEach(date => {
+                const timeDiff = date - minDate;
+                const binIndex = Math.floor(timeDiff / (binSize * 3600 * 1000));
+                if (binIndex >= 0 && binIndex < bins.length) {
+                    bins[binIndex]++;
+                }
+            });
+
+            const labels = Array.from({length: binCount}, (_, i) => {
+                const binDate = new Date(minDate.getTime() + i * binSize * 3600 * 1000);
+                return binDate.toLocaleDateString();
+            });
+
+            createChart('timelineChart', {
+                labels: labels,
+                datasets: [{
+                    data: bins,
+                    backgroundColor: '#805ad5',
+                    borderColor: '#6b46c1',
+                    borderWidth: 1,
+                    barPercentage: 0.98
+                }]
+            }, {
+                title: 'Activity Distribution Over Time',
+                yLabel: 'Number of Records',
+                xLabel: `Date (${binSize} hour bins)`
+            });
+        }
+
+        function updateCharts(hourlyData, weeklyData, monthlyData, weekdays, months) {
+            createChart('hourlyChart', {
+                labels: Array.from({length: 24}, (_, i) => `${i}:00`),
+                datasets: [{
+                    data: hourlyData,
+                    backgroundColor: '#4299e1',
+                    borderColor: '#3182ce',
+                    borderWidth: 1,
+                    barPercentage: 0.8
+                }]
+            }, {
+                title: 'Activity by Hour',
+                yLabel: 'Number of Records'
+            });
+
+            createChart('weeklyChart', {
+                labels: weekdays,
+                datasets: [{
+                    data: weeklyData,
+                    backgroundColor: '#48bb78',
+                    borderColor: '#38a169',
+                    borderWidth: 1,
+                    barPercentage: 0.8
+                }]
+            }, {
+                title: 'Activity by Day',
+                yLabel: 'Number of Records'
+            });
+
+            createChart('monthlyChart', {
+                labels: months,
+                datasets: [{
+                    data: monthlyData,
+                    backgroundColor: '#ed8936',
+                    borderColor: '#dd6b20',
+                    borderWidth: 1,
+                    barPercentage: 0.8
+                }]
+            }, {
+                title: 'Activity by Month',
+                yLabel: 'Number of Records'
+            });
+        }
+
+        function createChart(canvasId, data, options = {}) {
+            if (charts[canvasId]) {
+                charts[canvasId].destroy();
+            }
+
+            const ctx = document.getElementById(canvasId).getContext('2d');
+            charts[canvasId] = new Chart(ctx, {
+                type: 'bar',
+                data: data,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        title: {
+                            display: true,
+                            text: options.title || '',
+                            font: {
+                                size: 16
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: options.yLabel || '',
+                                font: {
+                                    size: 12
+                                }
+                            },
+                            ticks: {
+                                precision: 0
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: options.xLabel ? true : false,
+                                text: options.xLabel || '',
+                                font: {
+                                    size: 12
+                                }
+                            },
+                            ticks: {
+                                autoSkip: true,
+                                maxRotation: 45,
+                                minRotation: 45,
+                                maxTicksLimit: 20
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateHeatmap(data) {
+            if (window.heatLayer) {
+                map.removeLayer(window.heatLayer);
+            }
+            window.heatLayer = L.heatLayer(data, {
+                radius: 25,
+                blur: 15,
+                maxZoom: 10
+            }).addTo(map);
+
+            const bounds = L.latLngBounds(data.map(point => [point[0], point[1]]));
+            map.fitBounds(bounds);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Animated Route Around Yas Links, Abu Dhabi</title>
+<meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+<link href="https://api.mapbox.com/mapbox-gl-js/v3.8.0/mapbox-gl.css" rel="stylesheet">
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.8.0/mapbox-gl.js"></script>
+<style>
+body { margin: 0; padding: 0; }
+#map { position: absolute; top: 0; bottom: 0; width: 100%; }
+</style>
+</head>
+<body>
+<div id="map"></div>
+<script>
+	// Add your Mapbox access token here
+    mapboxgl.accessToken = 'pk.eyJ1IjoiamNkZW50b24yMDUxIiwiYSI6ImNtMzVkZXJudTA5ejkya3B5NDU4Z2MyeHQifQ.aUk4eH5k3JC45Foxcbe2qQ';
+
+    const start = [54.605, 24.465]; // Starting point near Yas Links
+    const end = [54.610, 24.470];   // Ending point near Yas Links
+
+    async function getRoute(start, end) {
+        const query = await fetch(
+            `https://api.mapbox.com/directions/v5/mapbox/driving/${start[0]},${start[1]};${end[0]},${end[1]}?geometries=geojson&access_token=${mapboxgl.accessToken}`,
+            { method: 'GET' }
+        );
+        const json = await query.json();
+        const data = json.routes[0];
+        const route = data.geometry.coordinates;
+        return route;
+    }
+
+    const map = new mapboxgl.Map({
+        container: 'map', // container ID
+        style: 'mapbox://styles/mapbox/dark-v11', // style URL
+        center: [54.608, 24.467], // starting position [lng, lat]
+        zoom: 14 // starting zoom
+    });
+
+    map.on('load', async () => {
+        const routeCoordinates = await getRoute(start, end);
+
+        const geojson = {
+            'type': 'FeatureCollection',
+            'features': [
+                {
+                    'type': 'Feature',
+                    'properties': {},
+                    'geometry': {
+                        'coordinates': routeCoordinates,
+                        'type': 'LineString'
+                    }
+                }
+            ]
+        };
+
+        map.addSource('line', {
+            type: 'geojson',
+            data: geojson
+        });
+
+        // Background line for filling gaps
+        map.addLayer({
+            type: 'line',
+            source: 'line',
+            id: 'line-background',
+            paint: {
+                'line-color': 'yellow',
+                'line-width': 6,
+                'line-opacity': 0.4
+            }
+        });
+
+        // Animated dashed line
+        map.addLayer({
+            type: 'line',
+            source: 'line',
+            id: 'line-dashed',
+            paint: {
+                'line-color': 'yellow',
+                'line-width': 6,
+                'line-dasharray': [0, 4, 3]
+            }
+        });
+
+        const dashArraySequence = [
+            [0, 4, 3],
+            [0.5, 4, 2.5],
+            [1, 4, 2],
+            [1.5, 4, 1.5],
+            [2, 4, 1],
+            [2.5, 4, 0.5],
+            [3, 4, 0],
+            [0, 0.5, 3, 3.5],
+            [0, 1, 3, 3],
+            [0, 1.5, 3, 2.5],
+            [0, 2, 3, 2],
+            [0, 2.5, 3, 1.5],
+            [0, 3, 3, 1],
+            [0, 3.5, 3, 0.5]
+        ];
+
+        let step = 0;
+
+        function animateDashArray(timestamp) {
+            const newStep = parseInt(
+                (timestamp / 50) % dashArraySequence.length
+            );
+
+            if (newStep !== step) {
+                map.setPaintProperty(
+                    'line-dashed',
+                    'line-dasharray',
+                    dashArraySequence[step]
+                );
+                step = newStep;
+            }
+
+            requestAnimationFrame(animateDashArray);
+        }
+
+        // Start animation
+        animateDashArray(0);
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Article Patterns Analysis</title>
+    
+    <!-- React Dependencies -->
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.development.js"></script>
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.development.js"></script>
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/prop-types/15.8.1/prop-types.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/recharts/2.10.3/Recharts.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            padding: 20px;
+            background: #f5f5f5;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1, h2, h3 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 40px;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .chart-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 40px;
+            min-height: 400px;
+        }
+
+        .patterns-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .pattern-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .pattern-title {
+            font-weight: bold;
+            color: #ff4646;
+            margin-bottom: 10px;
+        }
+
+        .pattern-value {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .pattern-description {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        @media (max-width: 768px) {
+            .patterns-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Article Patterns & Story Evolution</h1>
+
+        <!-- Article Patterns Overview -->
+        <div class="patterns-grid">
+            <div class="pattern-card">
+                <div class="pattern-title">Dominant Narrative</div>
+                <div class="pattern-value">Narrative 1</div>
+                <div class="pattern-description">Most prevalent narrative thread</div>
+            </div>
+            <div class="pattern-card">
+                <div class="pattern-title">Peak Coverage</div>
+                <div class="pattern-value">April 2024</div>
+                <div class="pattern-description">Month with highest narrative activity</div>
+            </div>
+            <div class="pattern-card">
+                <div class="pattern-title">Active Narratives</div>
+                <div class="pattern-value">5</div>
+                <div class="pattern-description">Distinct narrative threads identified</div>
+            </div>
+        </div>
+
+        <div id="root"></div>
+    </div>
+
+    <script type="text/babel">
+        const {
+            AreaChart, Area, LineChart, Line, XAxis, YAxis,
+            CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+            BarChart, Bar, Cell
+        } = window.Recharts;
+
+        const NarrativeFlow = () => {
+            const data = [
+                { 
+                    date: '2022-03',
+                    narrative1: 100, // Initial Crime Discovery
+                    narrative2: 0,
+                    narrative3: 0,
+                    narrative4: 0,
+                    narrative5: 0,
+                    sentiment: 0.2,
+                    topicStrength: 45,
+                },
+                { 
+                    date: '2022-06',
+                    narrative1: 60,
+                    narrative2: 100, // Arrest & Proceedings
+                    narrative3: 20,
+                    narrative4: 0,
+                    narrative5: 0,
+                    sentiment: -0.3,
+                    topicStrength: 65,
+                },
+                { 
+                    date: '2022-09',
+                    narrative1: 40,
+                    narrative2: 70,
+                    narrative3: 100, // Extradition Process
+                    narrative4: 0,
+                    narrative5: 0,
+                    sentiment: -0.5,
+                    topicStrength: 85,
+                },
+                { 
+                    date: '2023-03',
+                    narrative1: 20,
+                    narrative2: 40,
+                    narrative3: 60,
+                    narrative4: 100, // Legal Complications
+                    narrative5: 0,
+                    sentiment: 0.1,
+                    topicStrength: 95,
+                },
+                { 
+                    date: '2023-09',
+                    narrative1: 10,
+                    narrative2: 30,
+                    narrative3: 40,
+                    narrative4: 80,
+                    narrative5: 20,
+                    sentiment: 0.4,
+                    topicStrength: 75,
+                },
+                { 
+                    date: '2024-05',
+                    narrative1: 20,
+                    narrative2: 20,
+                    narrative3: 30,
+                    narrative4: 40,
+                    narrative5: 100, // Resolution
+                    sentiment: 0.3,
+                    topicStrength: 60,
+                }
+            ];
+
+            // Color scheme for the narratives
+                            const narrativeColors = {
+                narrative1: "#ff4646", // Initial Crime & Investigation (Darkest)
+                narrative2: "#ff8c8c", // Arrest & Initial Proceedings
+                narrative3: "#ffb3b3", // Extradition Process
+                narrative4: "#ffd9d9", // Legal Complications
+                narrative5: "#ffe6e6"  // Resolution & Final Charges (Lightest)
+            };
+
+            return (
+                <>
+                    <h2>Narrative Evolution Over Time</h2>
+                    <div className="chart-container">
+                        <div style={{ height: '400px' }}>
+                            <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart data={data}>
+                                    <defs>
+                                        {Object.entries(narrativeColors).map(([key, color]) => (
+                                            <linearGradient key={key} id={key} x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor={color} stopOpacity={0.8}/>
+                                                <stop offset="95%" stopColor={color} stopOpacity={0.2}/>
+                                            </linearGradient>
+                                        ))}
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" />
+                                    <XAxis dataKey="date" />
+                                    <YAxis />
+                                    <Tooltip />
+                                    <Legend />
+                                    {Object.entries(narrativeColors).map(([key, color]) => (
+                                        <Area 
+                                            key={key}
+                                            type="monotone" 
+                                            dataKey={key} 
+                                            stroke={color} 
+                                            fillOpacity={1} 
+                                            fill={`url(#${key})`} 
+                                            name={`Phase ${key.slice(-1)}: ${
+                                                key === 'narrative1' ? 'Initial Crime & Investigation' :
+                                                key === 'narrative2' ? 'Arrest & Initial Proceedings' :
+                                                key === 'narrative3' ? 'Extradition Process' :
+                                                key === 'narrative4' ? 'Legal Complications' :
+                                                'Resolution & Final Charges'
+                                            }`}
+                                        />
+                                    ))}
+                                </AreaChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+
+                    <h2>Sentiment and Topic Strength</h2>
+                    <div className="chart-container">
+                        <div style={{ height: '400px' }}>
+                            <ResponsiveContainer width="100%" height="100%">
+                                <LineChart data={data}>
+                                    <CartesianGrid strokeDasharray="3 3" />
+                                    <XAxis dataKey="date" />
+                                    <YAxis yAxisId="left" />
+                                    <YAxis yAxisId="right" orientation="right" />
+                                    <Tooltip />
+                                    <Legend />
+                                    <Line 
+                                        yAxisId="left"
+                                        type="monotone" 
+                                        dataKey="sentiment" 
+                                        stroke="#ff4646" 
+                                        name="Sentiment"
+                                        dot={{ stroke: '#ff4646', strokeWidth: 2, r: 4 }}
+                                    />
+                                    <Line 
+                                        yAxisId="right"
+                                        type="monotone" 
+                                        dataKey="topicStrength" 
+                                        stroke="#666666" 
+                                        name="Topic Strength"
+                                        dot={{ stroke: '#666666', strokeWidth: 2, r: 4 }}
+                                    />
+                                </LineChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+
+                    <h2>Narrative Indicators & Weights</h2>
+                    <div className="chart-container">
+                        <div style={{ height: '400px' }}>
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart
+                                    layout="vertical"
+                                    data={[
+                                        // P1 - Initial Crime & Investigation
+                                        { indicator: "tons cocaine", weight: 0.551048, narrative: "P1", narrativeName: "Initial Crime & Investigation" },
+                                        { indicator: "cocaine europe", weight: 0.429805, narrative: "P1", narrativeName: "Initial Crime & Investigation" },
+                                        { indicator: "investigation", weight: 0.424509, narrative: "P1", narrativeName: "Initial Crime & Investigation" },
+                                        { indicator: "kilos cocaine", weight: 0.383739, narrative: "P1", narrativeName: "Initial Crime & Investigation" },
+                                        { indicator: "cocaine seized", weight: 0.364581, narrative: "P1", narrativeName: "Initial Crime & Investigation" },
+                                        // P2 - Arrest & Initial Proceedings
+                                        { indicator: "arrest", weight: 0.622218, narrative: "P2", narrativeName: "Arrest & Initial Proceedings" },
+                                        { indicator: "arrested", weight: 0.522979, narrative: "P2", narrativeName: "Arrest & Initial Proceedings" },
+                                        { indicator: "international arrest", weight: 0.442146, narrative: "P2", narrativeName: "Arrest & Initial Proceedings" },
+                                        { indicator: "arrest warrant", weight: 0.431221, narrative: "P2", narrativeName: "Arrest & Initial Proceedings" },
+                                        { indicator: "tez arrested", weight: 0.27383, narrative: "P2", narrativeName: "Arrest & Initial Proceedings" },
+                                        // P3 - Extradition Process
+                                        { indicator: "extradition", weight: 1.040092, narrative: "P3", narrativeName: "Extradition Process" },
+                                        { indicator: "extradition request", weight: 0.493924, narrative: "P3", narrativeName: "Extradition Process" },
+                                        { indicator: "extradition paraguay", weight: 0.343318, narrative: "P3", narrativeName: "Extradition Process" },
+                                        { indicator: "request extradition", weight: 0.336582, narrative: "P3", narrativeName: "Extradition Process" },
+                                        { indicator: "confirmed extradition", weight: 0.225154, narrative: "P3", narrativeName: "Extradition Process" },
+                                        // P5 - Resolution & Charges
+                                        { indicator: "charges", weight: 0.241108, narrative: "P5", narrativeName: "Resolution & Charges" },
+                                        { indicator: "charges alleged", weight: 0.101531, narrative: "P5", narrativeName: "Resolution & Charges" },
+                                        { indicator: "charges paraguay", weight: 0.080022, narrative: "P5", narrativeName: "Resolution & Charges" },
+                                        { indicator: "faces charges", weight: 0.080022, narrative: "P5", narrativeName: "Resolution & Charges" },
+                                        { indicator: "face charges", weight: 0.076242, narrative: "P5", narrativeName: "Resolution & Charges" }
+                                    ]}
+                                    margin={{ top: 20, right: 40, left: 200, bottom: 20 }}
+                                >
+                                    <CartesianGrid strokeDasharray="3 3" />
+                                    <XAxis type="number" />
+                                    <YAxis dataKey="indicator" type="category" width={180} />
+                                    <Tooltip 
+                                        formatter={(value, name, props) => [
+                                            `Weight: ${value.toFixed(3)}`,
+                                            `${props.payload.narrativeName}`
+                                        ]}
+                                    />
+                                    <Bar dataKey="weight" name="Weight">
+                                        {data => data.map((entry, index) => (
+                                            <Cell 
+                                                key={`cell-${index}`} 
+                                                fill={entry.narrative === "P1" ? "#ff4646" : 
+                                                      entry.narrative === "P2" ? "#4666ff" :
+                                                      entry.narrative === "P3" ? "#46af46" :
+                                                      "#ff8c46"}
+                                            />
+                                        ))}
+                                    </Bar>
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+
+                    <div className="patterns-grid" style={{ textAlign: 'left' }}>
+                        {["P1", "P2", "P3", "P5"].map(phase => (
+                            <div key={phase} className="pattern-card">
+                                <div className="pattern-title" style={{
+                                    color: phase === "P1" ? "#ff4646" : 
+                                          phase === "P2" ? "#4666ff" :
+                                          phase === "P3" ? "#46af46" :
+                                          "#ff8c46"
+                                }}>
+                                    {phase === "P1" ? "Initial Crime & Investigation" :
+                                     phase === "P2" ? "Arrest & Initial Proceedings" :
+                                     phase === "P3" ? "Extradition Process" :
+                                     "Resolution & Charges"}
+                                </div>
+                                <div className="pattern-value">
+                                    {phase === "P1" ? "0.551" :
+                                     phase === "P2" ? "0.622" :
+                                     phase === "P3" ? "1.040" :
+                                     "0.241"} max weight
+                                </div>
+                                <div className="pattern-description">
+                                    Top indicator: {
+                                        phase === "P1" ? "tons cocaine" :
+                                        phase === "P2" ? "arrest" :
+                                        phase === "P3" ? "extradition" :
+                                        "charges"
+                                    }
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    <h2>Narrative Indicators & Weights</h2>
+                    <div className="chart-container">
+                        <div style={{ height: '800px' }}>  {/* Increased height for better visibility */}
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart
+                                    layout="vertical"
+                                    data={[
+                                        { indicator: "Phase 1: Initial Crime & Investigation", isPhase: true, weight: 0, phase: "P1" },
+                                        { indicator: "tons cocaine", weight: 0.551048, phase: "P1", percentInPhase: 100, narrativeName: "Initial Crime & Investigation" },
+                                        { indicator: "cocaine europe", weight: 0.429805, phase: "P1", percentInPhase: 78, narrativeName: "Initial Crime & Investigation" },
+                                        { indicator: "investigation", weight: 0.424509, phase: "P1", percentInPhase: 77, narrativeName: "Initial Crime & Investigation" },
+                                        { indicator: "kilos cocaine", weight: 0.383739, phase: "P1", percentInPhase: 70, narrativeName: "Initial Crime & Investigation" },
+                                        { indicator: "cocaine seized", weight: 0.364581, phase: "P1", percentInPhase: 66, narrativeName: "Initial Crime & Investigation" },
+                                        
+                                        { indicator: "Phase 2: Arrest & Initial Proceedings", isPhase: true, weight: 0, phase: "P2" },
+                                        { indicator: "arrest", weight: 0.622218, phase: "P2", percentInPhase: 100, narrativeName: "Arrest & Initial Proceedings" },
+                                        { indicator: "arrested", weight: 0.522979, phase: "P2", percentInPhase: 84, narrativeName: "Arrest & Initial Proceedings" },
+                                        { indicator: "international arrest", weight: 0.442146, phase: "P2", percentInPhase: 71, narrativeName: "Arrest & Initial Proceedings" },
+                                        { indicator: "arrest warrant", weight: 0.431221, phase: "P2", percentInPhase: 69, narrativeName: "Arrest & Initial Proceedings" },
+                                        { indicator: "tez arrested", weight: 0.27383, phase: "P2", percentInPhase: 44, narrativeName: "Arrest & Initial Proceedings" },
+                                        
+                                        { indicator: "Phase 3: Extradition Process", isPhase: true, weight: 0, phase: "P3" },
+                                        { indicator: "extradition", weight: 1.040092, phase: "P3", percentInPhase: 100, narrativeName: "Extradition Process" },
+                                        { indicator: "extradition request", weight: 0.493924, phase: "P3", percentInPhase: 47, narrativeName: "Extradition Process" },
+                                        { indicator: "extradition paraguay", weight: 0.343318, phase: "P3", percentInPhase: 33, narrativeName: "Extradition Process" },
+                                        { indicator: "request extradition", weight: 0.336582, phase: "P3", percentInPhase: 32, narrativeName: "Extradition Process" },
+                                        { indicator: "confirmed extradition", weight: 0.225154, phase: "P3", percentInPhase: 22, narrativeName: "Extradition Process" },
+                                        
+                                        { indicator: "Phase 5: Resolution & Charges", isPhase: true, weight: 0, phase: "P5" },
+                                        { indicator: "charges", weight: 0.241108, phase: "P5", percentInPhase: 100, narrativeName: "Resolution & Charges" },
+                                        { indicator: "charges alleged", weight: 0.101531, phase: "P5", percentInPhase: 42, narrativeName: "Resolution & Charges" },
+                                        { indicator: "charges paraguay", weight: 0.080022, phase: "P5", percentInPhase: 33, narrativeName: "Resolution & Charges" },
+                                        { indicator: "faces charges", weight: 0.080022, phase: "P5", percentInPhase: 33, narrativeName: "Resolution & Charges" },
+                                        { indicator: "face charges", weight: 0.076242, phase: "P5", percentInPhase: 32, narrativeName: "Resolution & Charges" }
+                                    ]}
+                                    margin={{ top: 20, right: 120, left: 200, bottom: 20 }}
+                                >
+                                    <CartesianGrid strokeDasharray="3 3" />
+                                    <XAxis 
+                                        type="number" 
+                                        domain={[0, 1.2]}
+                                        tickFormatter={value => value.toFixed(2)}
+                                    />
+                                    <YAxis 
+                                        dataKey="indicator" 
+                                        type="category" 
+                                        width={180}
+                                        tick={props => {
+                                            const { payload, x, y } = props;
+                                            const isPhase = payload.value.startsWith('Phase');
+                                            return (
+                                                <text 
+                                                    x={x} 
+                                                    y={y} 
+                                                    dy={4} 
+                                                    textAnchor="end" 
+                                                    fill={isPhase ? "#666" : "#333"}
+                                                    fontWeight={isPhase ? "bold" : "normal"}
+                                                >
+                                                    {payload.value}
+                                                </text>
+                                            );
+                                        }}
+                                    />
+                                    <Tooltip 
+                                        formatter={(value, name, props) => {
+                                            if (props.payload.isPhase) return ['', ''];
+                                            return [
+                                                `Weight: ${value.toFixed(3)} (${props.payload.percentInPhase}% of phase max)`,
+                                                props.payload.narrativeName
+                                            ];
+                                        }}
+                                    />
+                                    <Bar dataKey="weight" name="Weight">
+                                        {data => data.map((entry, index) => {
+                                            if (entry.isPhase) return <Cell key={`cell-${index}`} fill="none" />;
+                                            return (
+                                                <Cell 
+                                                    key={`cell-${index}`} 
+                                                    fill={entry.phase === "P1" ? "#ff4646" : 
+                                                          entry.phase === "P2" ? "#4666ff" :
+                                                          entry.phase === "P3" ? "#46af46" :
+                                                          "#ff8c46"}
+                                                    fillOpacity={0.9}
+                                                />
+                                            );
+                                        })}
+                                    </Bar>
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+
+                    <div className="patterns-grid">
+                        {["P1", "P2", "P3", "P5"].map(phase => (
+                            <div key={phase} className="pattern-card">
+                                <div className="pattern-title" style={{
+                                    color: phase === "P1" ? "#ff4646" : 
+                                          phase === "P2" ? "#4666ff" :
+                                          phase === "P3" ? "#46af46" :
+                                          "#ff8c46"
+                                }}>
+                                    {phase === "P1" ? "Initial Crime & Investigation" :
+                                     phase === "P2" ? "Arrest & Initial Proceedings" :
+                                     phase === "P3" ? "Extradition Process" :
+                                     "Resolution & Charges"}
+                                </div>
+                                <div className="pattern-value">
+                                    {phase === "P1" ? "0.551" :
+                                     phase === "P2" ? "0.622" :
+                                     phase === "P3" ? "1.040" :
+                                     "0.241"} max weight
+                                </div>
+                                <div className="pattern-description">
+                                    Top indicator: {
+                                        phase === "P1" ? "tons cocaine" :
+                                        phase === "P2" ? "arrest" :
+                                        phase === "P3" ? "extradition" :
+                                        "charges"
+                                    }
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </>
+            );
+        };
+
+        // Render the app
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<NarrativeFlow />);
+    </script>
+</body>
+
+</html>

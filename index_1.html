@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Data Visualization Map</title>
+    <script src="https://unpkg.com/deck.gl@latest/dist.min.js"></script>
+    <script src="https://api.mapbox.com/mapbox-gl-js/v2.9.1/mapbox-gl.js"></script>
+    <link href="https://api.mapbox.com/mapbox-gl-js/v2.9.1/mapbox-gl.css" rel="stylesheet"/>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+
+    <style>
+        body { 
+            margin: 0; 
+            padding: 0; 
+        }
+        #map { 
+            position: absolute; 
+            top: 0; 
+            bottom: 0; 
+            width: 100%; 
+        }
+
+        .control-panel {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 300px;
+            background: white;
+            margin: 20px;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            z-index: 1;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+    
+        .control-panel h3 {
+            color: #262730;
+            font-size: 18px;
+            margin: 0 0 20px 0;
+            font-weight: 600;
+        }
+    
+        .control-panel .layer-option {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+    
+        .control-panel .layer-option label {
+            display: flex;
+            align-items: center;
+            color: #262730;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+        }
+    
+        .control-panel input[type="checkbox"] {
+            margin-right: 10px;
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+        }
+    
+        .control-panel .slider-container {
+            margin: 20px 0;
+        }
+    
+        .control-panel .slider-label {
+            display: block;
+            color: #262730;
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+    
+        .control-panel input[type="range"] {
+            width: 100%;
+            margin: 8px 0;
+        }
+    
+        .control-panel .section-divider {
+            border-top: 1px solid #f0f0f0;
+            margin: 15px 0;
+        }
+
+        .control-panel .style-select {
+            width: 100%;
+            padding: 8px;
+            margin-top: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: white;
+            font-size: 14px;
+        }
+
+        .control-panel .style-select:focus {
+            outline: none;
+            border-color: #4299e1;
+        }
+
+        .custom-marker {
+            background-color: red;
+            border: 2px solid white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .custom-marker:hover {
+            transform: scale(1.2);
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <div class="control-panel">
+        <h3>Layer Controls</h3>
+
+        <div class="layer-option">
+            <span class="slider-label">Map Style</span>
+            <select id="map-style" class="style-select">
+                <option value="mapbox://styles/mapbox/dark-v10">Dark</option>
+                <option value="mapbox://styles/mapbox/light-v10">Light</option>
+                <option value="mapbox://styles/mapbox/satellite-v9">Satellite</option>
+                <option value="mapbox://styles/mapbox/streets-v11">Streets</option>
+                <option value="mapbox://styles/mapbox/outdoors-v11">Outdoors</option>
+            </select>
+        </div>
+
+        <div class="section-divider"></div>
+        
+        <div class="layer-option">
+            <label>
+                <input type="checkbox" id="scatter" checked>
+                Scatterplot
+            </label>
+        </div>
+        
+        <div class="layer-option">
+            <label>
+                <input type="checkbox" id="heatmap">
+                Heatmap
+            </label>
+        </div>
+        
+        <div class="layer-option">
+            <label>
+                <input type="checkbox" id="hexagon">
+                Hexagon
+            </label>
+        </div>
+
+        <div class="section-divider"></div>
+
+        <h3>Markers</h3>
+        
+        <div class="layer-option">
+            <label>
+                <input type="checkbox" id="icon-markers">
+                Icon Markers
+            </label>
+        </div>
+
+        <div class="layer-option">
+            <label>
+                <input type="checkbox" id="text-markers">
+                Text Markers
+            </label>
+        </div>
+
+        <div class="layer-option">
+            <label>
+                <input type="checkbox" id="column-markers">
+                3D Column Markers
+            </label>
+        </div>
+
+        <div class="layer-option">
+            <label>
+                <input type="checkbox" id="mapbox-markers">
+                Mapbox Markers
+            </label>
+        </div>
+
+        <div class="layer-option">
+            <label>
+                <input type="checkbox" id="custom-html-markers">
+                Custom HTML Markers
+            </label>
+        </div>
+
+        <div class="section-divider"></div>
+
+        <div class="slider-container">
+            <span class="slider-label">Point Size</span>
+            <input type="range" id="point-radius" min="1" max="50" value="10">
+        </div>
+
+        <div class="slider-container">
+            <span class="slider-label">Hexagon Radius</span>
+            <input type="range" id="radius" min="10" max="200" value="50">
+        </div>
+
+        <div class="slider-container">
+            <span class="slider-label">Hexagon Height Scale</span>
+            <input type="range" id="elevation" min="1" max="20" value="5">
+        </div>
+
+        <div class="slider-container">
+            <span class="slider-label">Column Height</span>
+            <input type="range" id="column-height" min="10" max="5000" value="100">
+        </div>
+    </div>
+
+    <script type="text/javascript">
+        const MAPBOX_TOKEN = 'pk.eyJ1IjoiamNkZW50b24yMDUxIiwiYSI6ImNtMzVkZXJudTA5ejkya3B5NDU4Z2MyeHQifQ.aUk4eH5k3JC45Foxcbe2qQ';
+        const {DeckGL, ScatterplotLayer, HeatmapLayer, HexagonLayer, IconLayer, TextLayer, ColumnLayer} = deck;
+
+        // Sample marker locations
+        const MARKER_LOCATIONS = [
+            {coordinates: [55.361416, 25.083593], name: 'LIKELY BDL - WADI AL SAFA 5'},
+            {coordinates: [55.167839, 25.068205], name: 'MONTGOMERIE GOLF COURSE'},
+            {coordinates: [55.384699, 25.134514], name: 'NASHIE CONTRACTING LLC'},
+            {coordinates: [55.368074, 25.080429], name: 'AL HABTOOR POLO RESORT'}
+
+        ];
+
+        let mapboxMarkers = [];
+        let customHTMLMarkers = [];
+
+        async function initializeMap() {
+            try {
+                // Load CSV data
+                const response = await fetch('/assets/df2.csv');
+                const csvText = await response.text();
+                const results = Papa.parse(csvText, {
+                    header: true,
+                    dynamicTyping: true
+                });
+
+                const data = results.data.filter(row => row.latitude && row.longitude);
+
+                // Calculate center point with fallback
+                const center = data.length > 0 ? 
+                    data.reduce((acc, row) => ({
+                        latitude: acc.latitude + row.latitude / data.length,
+                        longitude: acc.longitude + row.longitude / data.length
+                    }), { latitude: 0, longitude: 0 }) : 
+                    { latitude: 24.467, longitude: 54.608 };
+
+                function createIconLayer() {
+                    return new IconLayer({
+                        id: 'icon-layer',
+                        data: MARKER_LOCATIONS,
+                        pickable: true,
+                        iconAtlas: 'https://raw.githubusercontent.com/visgl/deck.gl-data/master/website/icon-atlas.png',
+                        iconMapping: {
+                            marker: {x: 0, y: 0, width: 128, height: 128, mask: true}
+                        },
+                        getIcon: d => 'marker',
+                        getPosition: d => d.coordinates,
+                        getSize: 32,
+                        getColor: [255, 0, 0]
+                    });
+                }
+
+                function createTextLayer() {
+                    return new TextLayer({
+                        id: 'text-layer',
+                        data: MARKER_LOCATIONS,
+                        pickable: true,
+                        getPosition: d => d.coordinates,
+                        getText: d => d.name,
+                        getSize: 16,
+                        getColor: [255, 255, 255],
+                        getAngle: 0,
+                        getTextAnchor: 'middle',
+                        getAlignmentBaseline: 'center'
+                    });
+                }
+
+                function createColumnLayer() {
+                    const columnHeight = document.getElementById('column-height').value;
+                    return new ColumnLayer({
+                        id: 'column-layer',
+                        data: MARKER_LOCATIONS,
+                        diskResolution: 12,
+                        radius: 20,
+                        extruded: true,
+                        pickable: true,
+                        getPosition: d => d.coordinates,
+                        getFillColor: [255, 0, 0, 255],
+                        getLineColor: [0, 0, 0],
+                        getElevation: parseInt(columnHeight)
+                    });
+                }
+
+                function toggleMapboxMarkers(show) {
+                    // Clear existing markers
+                    mapboxMarkers.forEach(marker => marker.remove());
+                    mapboxMarkers = [];
+
+                    if (show) {
+                        MARKER_LOCATIONS.forEach(location => {
+                            const marker = new mapboxgl.Marker()
+                                .setLngLat(location.coordinates)
+                                .setPopup(new mapboxgl.Popup().setHTML(`<h3>${location.name}</h3>`));
+                            
+                            marker.addTo(deckgl.getMapboxMap());
+                            mapboxMarkers.push(marker);
+                        });
+                    }
+                }
+
+                function toggleCustomHTMLMarkers(show) {
+                    // Clear existing custom markers
+                    customHTMLMarkers.forEach(marker => marker.remove());
+                    customHTMLMarkers = [];
+
+                    if (show) {
+                        MARKER_LOCATIONS.forEach(location => {
+                            const el = document.createElement('div');
+                            el.className = 'custom-marker';
+                            el.style.width = '20px';
+                            el.style.height = '20px';
+                            el.style.borderRadius = '50%';
+
+                            const marker = new mapboxgl.Marker(el)
+                                .setLngLat(location.coordinates)
+                                .setPopup(new mapboxgl.Popup().setHTML(`<h3>${location.name}</h3>`));
+                            
+                            marker.addTo(deckgl.getMapboxMap());
+                            customHTMLMarkers.push(marker);
+                        });
+                    }
+                }
+
+                function getLayers() {
+                    const layers = [];
+                    const hexRadius = document.getElementById('radius').value;
+                    const elevation = document.getElementById('elevation').value;
+                    const pointRadius = document.getElementById('point-radius').value;
+
+                    if (document.getElementById('scatter').checked) {
+                        layers.push(new ScatterplotLayer({
+                            id: 'scatter',
+                            data,
+                            getPosition: d => [d.longitude, d.latitude],
+                            getFillColor: [255, 0, 0, 140],
+                            getRadius: parseInt(pointRadius),
+                            pickable: true
+                        }));
+                    }
+
+                    if (document.getElementById('heatmap').checked) {
+                        layers.push(new HeatmapLayer({
+                            id: 'heat',
+                            data,
+                            getPosition: d => [d.longitude, d.latitude],
+                            getWeight: 1,
+                            radiusPixels: 60,
+                            intensity: 1
+                        }));
+                    }
+
+                    if (document.getElementById('hexagon').checked) {
+                        layers.push(new HexagonLayer({
+                            id: 'hex',
+                            data,
+                            getPosition: d => [d.longitude, d.latitude],
+                            radius: parseInt(hexRadius),
+                            elevationScale: parseInt(elevation),
+                            extruded: true,
+                            colorRange: [
+                                [245, 240, 200],
+                                [230, 220, 160],
+                                [230, 179, 95],
+                                [227, 139, 79],
+                                [215, 95, 78],
+                                [200, 43, 66]
+                            ],
+                            coverage: 0.8,
+                            upperPercentile: 100,
+                            getElevationWeight: d => 1,
+                            getColorWeight: d => 1,
+                            pickable: true,
+                            autoHighlight: true,
+                            material: {
+                                ambient: 0.64,
+                                diffuse: 0.6,
+                                shininess: 32,
+                                specularColor: [51, 51, 51]
+                            }
+                        }));
+                    }
+
+                    if (document.getElementById('icon-markers').checked) {
+                        layers.push(createIconLayer());
+                    }
+
+                    if (document.getElementById('text-markers').checked) {
+                        layers.push(createTextLayer());
+                    }
+
+                    if (document.getElementById('column-markers').checked) {
+                        layers.push(createColumnLayer());
+                    }
+
+                    return layers;
+                }
+
+                // Initialize deck.gl with Mapbox
+                const deckgl = new DeckGL({
+                    container: 'map',
+                    mapStyle: 'mapbox://styles/mapbox/dark-v10',
+                    mapboxApiAccessToken: MAPBOX_TOKEN,
+                    initialViewState: {
+                        longitude: center.longitude,
+                        latitude: center.latitude,
+                        zoom: 13,
+                        pitch: 45,
+                        bearing: 0
+                    },
+                    controller: true,
+                    layers: getLayers(),
+                    onViewStateChange: ({viewState}) => {
+                        // Keep Mapbox camera in sync with deck.gl
+                        const {longitude, latitude, zoom, pitch, bearing} = viewState;
+                        if (deckgl) {
+                            const mapboxMap = deckgl.getMapboxMap();
+                            mapboxMap.jumpTo({
+                                center: [longitude, latitude],
+                                zoom: zoom,
+                                pitch: pitch,
+                                bearing: bearing
+                            });
+                        }
+                    }
+                });
+
+                // Add event listeners for all controls
+                document.querySelectorAll('input[type="range"], input[type="checkbox"]').forEach(input => {
+                    input.addEventListener('input', () => {
+                        // Update deck.gl layers
+                        deckgl.setProps({layers: getLayers()});
+                        
+                        // Handle Mapbox markers separately
+                        if (input.id === 'mapbox-markers') {
+                            toggleMapboxMarkers(input.checked);
+                        }
+                        if (input.id === 'custom-html-markers') {
+                            toggleCustomHTMLMarkers(input.checked);
+                        }
+                    });
+                });
+
+                // Add event listener for map style changes
+                document.getElementById('map-style').addEventListener('change', (e) => {
+                    deckgl.setProps({
+                        mapStyle: e.target.value
+                    });
+                });
+
+                // Initialize Mapbox markers if checked
+                if (document.getElementById('mapbox-markers').checked) {
+                    toggleMapboxMarkers(true);
+                }
+                if (document.getElementById('custom-html-markers').checked) {
+                    toggleCustomHTMLMarkers(true);
+                }
+
+            } catch (error) {
+                console.error('Error loading or processing data:', error);
+            }
+        }
+
+        initializeMap();
+    </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

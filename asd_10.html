@@ -1,0 +1,741 @@
+<!-- PART 1: HTML Structure and Styling -->
+<!-- This is part 1 of 2. The script section at the bottom will be completed in part 2 -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Narrative Cluster Analysis - Diego Benítez Case</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            padding: 20px;
+            background: #f5f5f5;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1, h2, h3 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 40px;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .cluster-dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .cluster-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+            cursor: pointer;
+        }
+
+        .cluster-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .cluster-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .cluster-title {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #ff4646;
+        }
+
+        .cluster-badge {
+            background: #f8f9fa;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .cluster-stats {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+        }
+
+        .cluster-stat {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }
+
+        .cluster-content {
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .network-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 40px;
+            height: 600px;
+            position: relative;
+        }
+
+        .entity-cloud {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 40px;
+            min-height: 300px;
+        }
+
+        .entity-tag {
+            display: inline-block;
+            padding: 5px 10px;
+            margin: 5px;
+            background: #f8f9fa;
+            border-radius: 15px;
+            font-size: 0.9em;
+            color: #666;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .entity-tag:hover {
+            background: #ff4646;
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .chart-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 40px;
+            height: 400px;
+        }
+
+        #networkGraph {
+            width: 100%;
+            height: 100%;
+        }
+
+        .node-label {
+            font-size: 12px;
+            pointer-events: none;
+            user-select: none;
+        }
+
+        .cluster-metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .metric-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            text-align: center;
+            transition: transform 0.3s ease;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-2px);
+        }
+
+        .metric-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #ff4646;
+            margin-bottom: 5px;
+        }
+
+        .metric-label {
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .tooltip {
+            position: absolute;
+            background: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            font-size: 0.9em;
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        @media (max-width: 768px) {
+            .cluster-dashboard {
+                grid-template-columns: 1fr;
+            }
+            
+            .cluster-metrics {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Narrative Cluster Analysis</h1>
+
+        <!-- Cluster Metrics Overview -->
+        <div class="cluster-metrics">
+            <div class="metric-card metric-major-clusters">
+                <div class="metric-value">5</div>
+                <div class="metric-label">Major Narrative Clusters</div>
+            </div>
+            <div class="metric-card metric-connected-events">
+                <div class="metric-value">32</div>
+                <div class="metric-label">Connected Events</div>
+            </div>
+            <div class="metric-card metric-key-entities">
+                <div class="metric-value">12</div>
+                <div class="metric-label">Key Entities</div>
+            </div>
+            <div class="metric-card metric-coherence">
+                <div class="metric-value">87%</div>
+                <div class="metric-label">Narrative Coherence</div>
+            </div>
+        </div>
+
+        <!-- Interactive Network Graph -->
+        <h2>Narrative Network Analysis</h2>
+        <div class="network-container">
+            <div id="networkGraph"></div>
+        </div>
+
+        <!-- Detailed Cluster Analysis -->
+        <h2>Cluster Details & Evolution</h2>
+        <div class="cluster-dashboard">
+            <div class="cluster-card" data-cluster="investigation">
+                <div class="cluster-header">
+                    <div class="cluster-title">Initial Investigation</div>
+                    <div class="cluster-badge">7 Articles</div>
+                </div>
+                <div class="cluster-stats">
+                    <div class="cluster-stat">
+                        <span>Time Span:</span>
+                        <span>Mar 2022 - Jun 2022</span>
+                    </div>
+                    <div class="cluster-stat">
+                        <span>Key Entities:</span>
+                        <span>4</span>
+                    </div>
+                    <div class="cluster-stat">
+                        <span>Location Focus:</span>
+                        <span>Germany, Paraguay</span>
+                    </div>
+                </div>
+                <div class="cluster-content">
+                    <p>Primary focus on cocaine seizure (16,174 kg) and initial charges. Strong connections to German authorities and Paraguayan business entities.</p>
+                </div>
+            </div>
+
+            <div class="cluster-card" data-cluster="arrest">
+                <div class="cluster-header">
+                    <div class="cluster-title">Arrest & Initial Proceedings</div>
+                    <div class="cluster-badge">5 Articles</div>
+                </div>
+                <div class="cluster-stats">
+                    <div class="cluster-stat">
+                        <span>Time Span:</span>
+                        <span>Jun 2022 - Jul 2022</span>
+                    </div>
+                    <div class="cluster-stat">
+                        <span>Key Entities:</span>
+                        <span>6</span>
+                    </div>
+                    <div class="cluster-stat">
+                        <span>Location Focus:</span>
+                        <span>UAE</span>
+                    </div>
+                </div>
+                <div class="cluster-content">
+                    <p>Concentrated coverage of arrest in UAE and immediate legal response. Strong Interpol involvement and international coordination themes.</p>
+                </div>
+            </div>
+
+            <div class="cluster-card" data-cluster="extradition">
+                <div class="cluster-header">
+                    <div class="cluster-title">Extradition Process</div>
+                    <div class="cluster-badge">4 Articles</div>
+                </div>
+                <div class="cluster-stats">
+                    <div class="cluster-stat">
+                        <span>Time Span:</span>
+                        <span>Jul 2022 - Jan 2023</span>
+                    </div>
+                    <div class="cluster-stat">
+                        <span>Key Entities:</span>
+                        <span>5</span>
+                    </div>
+                    <div class="cluster-stat">
+                        <span>Location Focus:</span>
+                        <span>UAE, Paraguay</span>
+                    </div>
+                </div>
+                <div class="cluster-content">
+                    <p>Complex legal proceedings and diplomatic negotiations. Multiple legal systems involved with focus on extradition procedures.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Entity Relationships -->
+        <h2>Key Entity Relationships</h2>
+        <div class="entity-cloud"></div>
+
+        <!-- Temporal Evolution -->
+        <h2>Temporal Evolution of Narratives</h2>
+        <div class="chart-container">
+            <canvas id="evolutionChart"></canvas>
+        </div>
+    </div>
+
+    <script>
+    // JavaScript code will be provided in Part 2
+    // Place Part 2 content here
+
+
+// Network Graph Setup
+const width = document.querySelector('.network-container').offsetWidth;
+const height = document.querySelector('.network-container').offsetHeight;
+
+// Define nodes and links for the network
+const nodes = [
+    { id: "Diego Benítez", group: 1 },
+    { id: "Pinturas Tupa SA", group: 1 },
+    { id: "German Authorities", group: 2 },
+    { id: "UAE Police", group: 2 },
+    { id: "Interpol", group: 2 },
+    { id: "Paraguay Prosecutors", group: 3 },
+    { id: "UAE Courts", group: 3 },
+    { id: "Hamburg Port", group: 4 },
+    { id: "Dubai Police", group: 4 }
+];
+
+const links = [
+    { source: "Diego Benítez", target: "Pinturas Tupa SA", value: 5 },
+    { source: "Diego Benítez", target: "German Authorities", value: 4 },
+    { source: "German Authorities", target: "Hamburg Port", value: 3 },
+    { source: "Diego Benítez", target: "UAE Police", value: 4 },
+    { source: "UAE Police", target: "Dubai Police", value: 3 },
+    { source: "UAE Police", target: "Interpol", value: 2 },
+    { source: "UAE Courts", target: "Paraguay Prosecutors", value: 3 },
+    { source: "Interpol", target: "Paraguay Prosecutors", value: 2 }
+];
+
+// Initialize D3 force simulation
+const simulation = d3.forceSimulation(nodes)
+    .force("link", d3.forceLink(links).id(d => d.id).distance(100))
+    .force("charge", d3.forceManyBody().strength(-300))
+    .force("center", d3.forceCenter(width / 2, height / 2))
+    .force("collision", d3.forceCollide().radius(30));
+
+// Create SVG container
+const svg = d3.select("#networkGraph")
+    .append("svg")
+    .attr("width", width)
+    .attr("height", height);
+
+// Add zoom functionality
+const g = svg.append("g");
+svg.call(d3.zoom()
+    .extent([[0, 0], [width, height]])
+    .scaleExtent([0.5, 4])
+    .on("zoom", (event) => {
+        g.attr("transform", event.transform);
+    }));
+
+// Create links
+const link = g.append("g")
+    .selectAll("line")
+    .data(links)
+    .join("line")
+    .style("stroke", "#999")
+    .style("stroke-opacity", 0.6)
+    .style("stroke-width", d => Math.sqrt(d.value));
+
+// Create nodes
+const node = g.append("g")
+    .selectAll("circle")
+    .data(nodes)
+    .join("circle")
+    .attr("r", 10)
+    .style("fill", d => d3.schemeCategory10[d.group - 1])
+    .style("stroke", "#fff")
+    .style("stroke-width", 2)
+    .call(drag(simulation));
+
+// Add labels
+const label = g.append("g")
+    .selectAll("text")
+    .data(nodes)
+    .join("text")
+// Continuing from previous script...
+.attr("class", "node-label")
+    .text(d => d.id)
+    .attr("font-size", "12px")
+    .attr("dx", 15)
+    .attr("dy", 4);
+
+// Define drag behavior
+function drag(simulation) {
+    function dragstarted(event) {
+        if (!event.active) simulation.alphaTarget(0.3).restart();
+        event.subject.fx = event.subject.x;
+        event.subject.fy = event.subject.y;
+    }
+    
+    function dragged(event) {
+        event.subject.fx = event.x;
+        event.subject.fy = event.y;
+    }
+    
+    function dragended(event) {
+        if (!event.active) simulation.alphaTarget(0);
+        event.subject.fx = null;
+        event.subject.fy = null;
+    }
+    
+    return d3.drag()
+        .on("start", dragstarted)
+        .on("drag", dragged)
+        .on("end", dragended);
+}
+
+// Update positions on each tick
+simulation.on("tick", () => {
+    link
+        .attr("x1", d => d.source.x)
+        .attr("y1", d => d.source.y)
+        .attr("x2", d => d.target.x)
+        .attr("y2", d => d.target.y);
+
+    node
+        .attr("cx", d => d.x)
+        .attr("cy", d => d.y);
+
+    label
+        .attr("x", d => d.x)
+        .attr("y", d => d.y);
+});
+
+// Add node interactivity
+node.on("mouseover", function(event, d) {
+    // Highlight connected nodes
+    const connectedNodes = new Set();
+    links.forEach(l => {
+        if (l.source.id === d.id) connectedNodes.add(l.target.id);
+        if (l.target.id === d.id) connectedNodes.add(l.source.id);
+    });
+    
+    node.style("opacity", n => connectedNodes.has(n.id) || n.id === d.id ? 1 : 0.1);
+    link.style("opacity", l => 
+        l.source.id === d.id || l.target.id === d.id ? 1 : 0.1
+    );
+    label.style("opacity", n => connectedNodes.has(n.id) || n.id === d.id ? 1 : 0.1);
+
+    // Show tooltip
+    const tooltip = d3.select("body").append("div")
+        .attr("class", "tooltip")
+        .style("position", "absolute")
+        .style("background", "white")
+        .style("padding", "10px")
+        .style("border-radius", "5px")
+        .style("box-shadow", "0 2px 4px rgba(0,0,0,0.1)")
+        .style("pointer-events", "none")
+        .style("left", (event.pageX + 10) + "px")
+        .style("top", (event.pageY + 10) + "px");
+
+    tooltip.append("div")
+        .style("font-weight", "bold")
+        .text(d.id);
+
+    // Count connections
+    const connections = links.filter(l => 
+        l.source.id === d.id || l.target.id === d.id
+    ).length;
+
+    tooltip.append("div")
+        .text(`Connections: ${connections}`);
+})
+.on("mouseout", function() {
+    node.style("opacity", 1);
+    link.style("opacity", 0.6);
+    label.style("opacity", 1);
+    d3.selectAll(".tooltip").remove();
+});
+
+// Entity Cloud Visualization
+const entities = [
+    { name: 'Diego Benítez', weight: 20, type: 'person', articles: 15 },
+    { name: 'UAE Courts', weight: 15, type: 'institution', articles: 8 },
+    { name: 'Interpol', weight: 12, type: 'organization', articles: 6 },
+    { name: 'German Authorities', weight: 10, type: 'institution', articles: 5 },
+    { name: 'Pinturas Tupa SA', weight: 8, type: 'company', articles: 4 },
+    { name: 'Paraguay Prosecutors', weight: 14, type: 'institution', articles: 7 },
+    { name: 'Hamburg Port', weight: 6, type: 'location', articles: 3 },
+    { name: 'Dubai Police', weight: 9, type: 'institution', articles: 4 }
+];
+
+// Entity Cloud Visualization
+const entityCloud = d3.select('.entity-cloud')
+    .append('svg')
+    .attr('width', '100%')
+    .attr('height', '400'); // Increased height for better visibility
+
+// Create a force simulation for entity positioning
+const entitySimulation = d3.forceSimulation(entities)
+    .force('center', d3.forceCenter(width / 2, 200))
+    .force('charge', d3.forceManyBody().strength(-200))
+    .force('collide', d3.forceCollide().radius(d => d.weight * 2));
+
+// Create entity groups
+const entityGroups = entityCloud.selectAll('.entity-group')
+    .data(entities)
+    .join('g')
+    .attr('class', 'entity-group')
+    .style('cursor', 'pointer');
+
+// Add circles for entities
+entityGroups.append('circle')
+    .attr('r', d => d.weight)
+    .style('fill', d => {
+        const colors = {
+            person: '#ff4646',
+            institution: '#4646ff',
+            organization: '#46ff46',
+            company: '#ffff46',
+            location: '#ff46ff'
+        };
+        return colors[d.type];
+    })
+    .style('opacity', 0.7)
+    .style('stroke', '#fff')
+    .style('stroke-width', 2);
+
+// Add labels for entities
+entityGroups.append('text')
+    .text(d => d.name)
+    .attr('text-anchor', 'middle')
+    .attr('dy', d => d.weight + 20)
+    .style('font-size', '12px')
+    .style('fill', '#333');
+
+// Add article count labels
+entityGroups.append('text')
+    .text(d => d.articles)
+    .attr('text-anchor', 'middle')
+    .attr('dy', '0.3em')
+    .style('font-size', '10px')
+    .style('fill', 'white')
+    .style('font-weight', 'bold');
+
+// Update positions on tick
+entitySimulation.on('tick', () => {
+    entityGroups
+        .attr('transform', d => `translate(${d.x},${d.y})`);
+});
+
+// Add interactivity
+entityGroups
+    .on('mouseover', function(event, d) {
+        // Highlight connected nodes in main network
+        const connectedNodes = new Set();
+        links.forEach(l => {
+            if (l.source.id === d.name) connectedNodes.add(l.target.id);
+            if (l.target.id === d.name) connectedNodes.add(l.source.id);
+        });
+
+        node.style('opacity', n => 
+            connectedNodes.has(n.id) || n.id === d.name ? 1 : 0.1
+        );
+        link.style('opacity', l => 
+            (l.source.id === d.name || l.target.id === d.name) ? 1 : 0.1
+        );
+
+        // Highlight current entity
+        d3.select(this).select('circle')
+            .transition()
+            .duration(200)
+            .attr('r', d => d.weight * 1.2);
+    })
+    .on('mouseout', function() {
+        node.style('opacity', 1);
+        link.style('opacity', 0.6);
+        
+        d3.select(this).select('circle')
+            .transition()
+            .duration(200)
+            .attr('r', d => d.weight);
+    });
+
+// Evolution Chart
+const evolutionData = {
+    labels: ['Mar 2022', 'Jun 2022', 'Jul 2022', 'Nov 2022', 'Dec 2022', 
+             'Jan 2023', 'Nov 2023', 'Dec 2023', 'Feb 2024', 'Aug 2024', 'Oct 2024'],
+    datasets: [{
+        label: 'Article Count',
+        data: [1, 7, 2, 1, 1, 1, 3, 1, 1, 1, 1],
+        backgroundColor: '#ff4646',
+        borderRadius: 4
+    }]
+};
+
+const evolutionCtx = document.getElementById('evolutionChart').getContext('2d');
+new Chart(evolutionCtx, {
+    type: 'bar',
+    data: evolutionData,
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            title: {
+                display: true,
+                text: 'Article Publication Timeline'
+            },
+            legend: {
+                display: false
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        return `Articles: ${context.raw}`;
+                    }
+                }
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                title: {
+                    display: true,
+                    text: 'Number of Articles'
+                }
+            },
+            x: {
+                ticks: {
+                    maxRotation: 45,
+                    minRotation: 45
+                }
+            }
+        }
+    }
+});
+
+// Cluster Card Interactions
+document.querySelectorAll('.cluster-card').forEach(card => {
+    card.addEventListener('click', function() {
+        const clusterId = this.dataset.cluster;
+        
+        // Get entities mentioned in this cluster
+        const clusterText = this.textContent.toLowerCase();
+        const relatedNodes = nodes.filter(n => 
+            clusterText.includes(n.id.toLowerCase())
+        ).map(n => n.id);
+
+        // Highlight network elements
+        node.style("opacity", n => 
+            relatedNodes.includes(n.id) ? 1 : 0.1
+        );
+        link.style("opacity", l => 
+            relatedNodes.includes(l.source.id) && 
+            relatedNodes.includes(l.target.id) ? 1 : 0.1
+        );
+        label.style("opacity", n => 
+            relatedNodes.includes(n.id) ? 1 : 0.1
+        );
+
+        // Reset after delay
+        setTimeout(() => {
+            node.style("opacity", 1);
+            link.style("opacity", 0.6);
+            label.style("opacity", 1);
+        }, 2000);
+    });
+});
+
+// Functions for calculating metrics
+function calculateClusterMetrics() {
+    const metrics = {
+        totalArticles: evolutionData.datasets[0].data.reduce((a, b) => a + b, 0),
+        entityCount: new Set(nodes.map(n => n.id)).size,
+        connectionCount: links.length,
+        coherenceScore: calculateCoherenceScore()
+    };
+
+    updateMetricsDisplay(metrics);
+}
+
+function calculateCoherenceScore() {
+    const maxPossibleConnections = nodes.length * (nodes.length - 1) / 2;
+    const actualConnections = links.length;
+    return Math.round((actualConnections / maxPossibleConnections) * 100);
+}
+
+function updateMetricsDisplay(metrics) {
+    document.querySelector('.metric-major-clusters .metric-value').textContent = 
+        document.querySelectorAll('.cluster-card').length;
+    document.querySelector('.metric-connected-events .metric-value').textContent = 
+        metrics.connectionCount;
+    document.querySelector('.metric-key-entities .metric-value').textContent = 
+        metrics.entityCount;
+    document.querySelector('.metric-coherence .metric-value').textContent = 
+        `${metrics.coherenceScore}%`;
+}
+
+// Initialize metrics
+calculateClusterMetrics();
+</script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

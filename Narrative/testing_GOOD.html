@@ -1,0 +1,1808 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Article Patterns Analysis</title>
+    
+    <!-- React Dependencies -->
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.development.js"></script>
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.development.js"></script>
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/prop-types/15.8.1/prop-types.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/recharts/2.10.3/Recharts.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            padding: 20px;
+            background: #f5f5f5;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1, h2, h3 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 40px;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .chart-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 40px;
+            min-height: 400px;
+        }
+
+        .patterns-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .pattern-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .pattern-title {
+            font-weight: bold;
+            color: #ff4646;
+            margin-bottom: 10px;
+        }
+
+        .pattern-value {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .pattern-description {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        @media (max-width: 768px) {
+            .patterns-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+
+
+<div class="container">
+    <h1>Article Patterns & Story Evolution</h1>
+
+    <!-- Article Patterns Overview -->
+    <div class="patterns-grid">
+        <div class="pattern-card">
+            <div class="pattern-title">Dominant Narrative</div>
+            <div class="pattern-value">Narrative 1</div>
+            <div class="pattern-description">Most prevalent narrative thread</div>
+        </div>
+        <div class="pattern-card">
+            <div class="pattern-title">Peak Coverage</div>
+            <div class="pattern-value">April 2024</div>
+            <div class="pattern-description">Month with highest narrative activity</div>
+        </div>
+        <div class="pattern-card">
+            <div class="pattern-title">Active Narratives</div>
+            <div class="pattern-value">5</div>
+            <div class="pattern-description">Distinct narrative threads identified</div>
+        </div>
+    </div>
+
+    <h1>Article Patterns Overview</h1>
+
+        <!-- Article Patterns Overview -->
+        <div class="patterns-grid">
+            <div class="pattern-card">
+                <div class="pattern-title" style="color: #ff4646">Initial Crime & Investigation</div>
+                <div class="pattern-value">0.551 max weight</div>
+                <div class="pattern-description">Top indicator: tons cocaine</div>
+            </div>
+            <div class="pattern-card">
+                <div class="pattern-title" style="color: #4666ff">Arrest & Initial Proceedings</div>
+                <div class="pattern-value">0.622 max weight</div>
+                <div class="pattern-description">Top indicator: arrest</div>
+            </div>
+            <div class="pattern-card">
+                <div class="pattern-title" style="color: #46af46">Extradition Process</div>
+                <div class="pattern-value">1.040 max weight</div>
+                <div class="pattern-description">Top indicator: extradition</div>
+            </div>
+            <div class="pattern-card">
+                <div class="pattern-title" style="color: #ff8c46">Resolution & Charges</div>
+                <div class="pattern-value">0.241 max weight</div>
+                <div class="pattern-description">Top indicator: charges</div>
+            </div>
+        </div>
+
+    <div id="root"></div>
+</div>
+
+    <script type="text/babel">
+        const {
+            AreaChart, Area, LineChart, Line, XAxis, YAxis,
+            CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+            BarChart, Bar, Cell, LabelList, ScatterChart, Scatter,
+            ZAxis, ComposedChart
+        } = window.Recharts;
+
+
+
+
+
+        const { useRef, useEffect } = React;
+
+function ConceptNetwork2D() {
+  const svgRef = useRef();
+
+  const nodes = [
+    { id: "COCAINE", group: 1, weight: 0.551048, radius: 40 },
+    { id: "SEIZURE", group: 1, weight: 0.364581, radius: 35 },
+    { id: "INVESTIGATION", group: 2, weight: 0.424509, radius: 30 },
+    { id: "QUANTITY", group: 3, weight: 0.383739, radius: 30 },
+    { id: "METHOD", group: 4, weight: 0.344153, radius: 25 },
+    { id: "LOCATION", group: 5, weight: 0.429805, radius: 25 },
+    { id: "tons", group: 3, weight: 0.2, radius: 15 },
+    { id: "kilos", group: 3, weight: 0.2, radius: 15 },
+    { id: "hidden", group: 4, weight: 0.2, radius: 15 },
+    { id: "load", group: 4, weight: 0.2, radius: 15 },
+    { id: "europe", group: 5, weight: 0.2, radius: 15 }
+  ];
+
+  const links = [
+    { source: "COCAINE", target: "SEIZURE", value: 5 },
+    { source: "COCAINE", target: "QUANTITY", value: 4 },
+    { source: "COCAINE", target: "METHOD", value: 3 },
+    { source: "COCAINE", target: "LOCATION", value: 3 },
+    { source: "COCAINE", target: "INVESTIGATION", value: 4 },
+    { source: "QUANTITY", target: "tons", value: 2 },
+    { source: "QUANTITY", target: "kilos", value: 2 },
+    { source: "METHOD", target: "hidden", value: 2 },
+    { source: "METHOD", target: "load", value: 2 },
+    { source: "LOCATION", target: "europe", value: 2 }
+  ];
+
+  useEffect(() => {
+    const width = 800;
+    const height = 600;
+
+    // Clear any existing elements inside svg
+    d3.select(svgRef.current).selectAll("*").remove();
+
+    const svg = d3.select(svgRef.current)
+      .attr("width", "100%")
+      .attr("height", "100%");
+
+    const zoom = d3.zoom()
+      .scaleExtent([0.5, 5])
+      .on("zoom", (event) => {
+        g.attr("transform", event.transform);
+      });
+
+    svg.call(zoom);
+
+    const g = svg.append("g")
+      .attr("transform", "scale(0.8) translate(100,100)");
+
+    const simulation = d3.forceSimulation(nodes)
+      .force("link", d3.forceLink(links).id(d => d.id).distance(150))
+      .force("charge", d3.forceManyBody().strength(-300))
+      .force("center", d3.forceCenter(width / 2, height / 2));
+
+    const link = g.append("g")
+      .selectAll("line")
+      .data(links)
+      .join("line")
+      .attr("stroke", "#999")
+      .attr("stroke-opacity", 0.6)
+      .attr("stroke-width", d => Math.sqrt(d.value));
+
+    const color = d3.scaleOrdinal(d3.schemeCategory10);
+
+    function drag(simulation) {
+      function dragstarted(event) {
+        if (!event.active) simulation.alphaTarget(0.3).restart();
+        event.subject.fx = event.subject.x;
+        event.subject.fy = event.subject.y;
+      }
+      function dragged(event) {
+        event.subject.fx = event.x;
+        event.subject.fy = event.y;
+      }
+      function dragended(event) {
+        if (!event.active) simulation.alphaTarget(0);
+        event.subject.fx = null;
+        event.subject.fy = null;
+      }
+      return d3.drag()
+        .on("start", dragstarted)
+        .on("drag", dragged)
+        .on("end", dragended);
+    }
+
+    const node = g.append("g")
+      .selectAll("g")
+      .data(nodes)
+      .join("g")
+      .call(drag(simulation));
+
+    node.append("circle")
+      .attr("r", d => d.radius)
+      .attr("fill", d => color(d.group))
+      .attr("fill-opacity", 0.7);
+
+    node.append("text")
+      .text(d => d.id)
+      .attr("x", 0)
+      .attr("y", d => d.radius + 12)
+      .attr("text-anchor", "middle")
+      .attr("fill", "#333")
+      .style("font-size", "12px");
+
+    node.append("title")
+      .text(d => `${d.id}\nWeight: ${d.weight}`);
+
+    simulation.on("tick", () => {
+      link
+        .attr("x1", d => d.source.x)
+        .attr("y1", d => d.source.y)
+        .attr("x2", d => d.target.x)
+        .attr("y2", d => d.target.y);
+
+      node
+        .attr("transform", d => `translate(${d.x},${d.y})`);
+    });
+  }, []);
+
+  return (
+    <div 
+      className="chart-container" 
+      style={{ 
+        height: '600px', 
+        marginBottom: '40px'
+      }}
+    >
+      <svg ref={svgRef} style={{ width: '100%', height: '100%' }}></svg>
+    </div>
+  );
+}
+
+
+
+
+function ConceptNetwork3D() {
+  const plotRef = React.useRef(null);
+
+  React.useEffect(() => {
+    // We'll copy your existing Plotly + d3 code here:
+    const colorScale = d3.scaleOrdinal(d3.schemeCategory10);
+
+    const nodes = [
+      { id: "COCAINE", group: 1, weight: 0.551048, radius: 40 },
+      { id: "SEIZURE", group: 1, weight: 0.364581, radius: 35 },
+      { id: "INVESTIGATION", group: 2, weight: 0.424509, radius: 30 },
+      { id: "QUANTITY", group: 3, weight: 0.383739, radius: 30 },
+      { id: "METHOD", group: 4, weight: 0.344153, radius: 25 },
+      { id: "LOCATION", group: 5, weight: 0.429805, radius: 25 },
+      { id: "tons", group: 3, weight: 0.2, radius: 15 },
+      { id: "kilos", group: 3, weight: 0.2, radius: 15 },
+      { id: "hidden", group: 4, weight: 0.2, radius: 15 },
+      { id: "load", group: 4, weight: 0.2, radius: 15 },
+      { id: "europe", group: 5, weight: 0.2, radius: 15 }
+    ];
+
+    nodes.forEach(node => {
+      node.color = colorScale(node.group);
+    });
+
+    const links = [
+      { source: "COCAINE", target: "SEIZURE" },
+      { source: "COCAINE", target: "QUANTITY" },
+      { source: "COCAINE", target: "METHOD" },
+      { source: "COCAINE", target: "LOCATION" },
+      { source: "QUANTITY", target: "tons" },
+      { source: "QUANTITY", target: "kilos" },
+      { source: "METHOD", target: "hidden" },
+      { source: "METHOD", target: "load" },
+      { source: "LOCATION", target: "europe" }
+    ];
+
+    // Force-directed logic (2D approximation, but we'll assign a pseudo 'z' dimension)
+    function calculateForceDirectedPositions(nodes, links) {
+      const simulation = d3.forceSimulation(nodes)
+        .force("link", d3.forceLink(links).id(d => d.id).distance(100))
+        .force("charge", d3.forceManyBody().strength(-200))
+        .force("center", d3.forceCenter(0, 0))
+        .stop();
+
+      // Manually "tick" the simulation
+      for (let i = 0; i < 300; i++) {
+        simulation.tick();
+      }
+
+      // Assign random z positions or a simple function of group
+      nodes.forEach(node => {
+        if (node.x == null) node.x = Math.random() * 500 - 250;
+        if (node.y == null) node.y = Math.random() * 500 - 250;
+        // Example: place nodes in different z-layers based on group
+        if (node.z == null) node.z = node.group * 100;
+      });
+
+      return nodes;
+    }
+
+    const positionedNodes = calculateForceDirectedPositions(nodes, links);
+
+    // Prepare link traces
+    const linkTraces = links.map(link => {
+      const sourceNode = positionedNodes.find(n => n.id === link.source);
+      const targetNode = positionedNodes.find(n => n.id === link.target);
+      if (!sourceNode || !targetNode) return null;
+
+      return {
+        x: [sourceNode.x, targetNode.x, null],
+        y: [sourceNode.y, targetNode.y, null],
+        z: [sourceNode.z, targetNode.z, null],
+        mode: 'lines',
+        line: {
+          width: 4,
+          color: 'grey'
+        },
+        type: 'scatter3d'
+      };
+    }).filter(Boolean);
+
+    // Node trace
+    const nodeTrace = {
+      x: positionedNodes.map(n => n.x),
+      y: positionedNodes.map(n => n.y),
+      z: positionedNodes.map(n => n.z),
+      mode: 'markers+text',
+      marker: {
+        size: positionedNodes.map(n => n.radius * 1.5),
+        color: positionedNodes.map(n => n.color),
+        opacity: 0.8
+      },
+      text: positionedNodes.map(n => n.id),
+      textfont: { size: 14 },
+      textposition: 'top center',
+      type: 'scatter3d'
+    };
+
+    const layout = {
+      title: '3D Scatter Plot with Links',
+      showlegend: false,
+      margin: { l: 0, r: 0, b: 0, t: 50 },
+      scene: {
+        xaxis: { title: 'X' },
+        yaxis: { title: 'Y' },
+        zaxis: { title: 'Z' }
+      }
+    };
+
+    // Render using the plotRef
+    Plotly.newPlot(plotRef.current, [...linkTraces, nodeTrace], layout);
+  }, []);
+
+  return (
+    <div 
+      className="chart-container" 
+      style={{ 
+        height: '600px', 
+        marginBottom: '40px'
+      }}
+    >
+      {/* The div where Plotly will attach the 3D plot */}
+      <div 
+        ref={plotRef} 
+        style={{ width: '100%', height: '100%' }}
+      ></div>
+    </div>
+  );
+}
+
+
+function ConceptNetwork3DAlt() {
+  const plotRef = React.useRef(null);
+
+  React.useEffect(() => {
+    // --- Node and link data ---
+    const nodes = [
+      { id: "COCAINE", group: 1, weight: 0.551048, radius: 40 },
+      { id: "SEIZURE", group: 1, weight: 0.364581, radius: 35 },
+      { id: "INVESTIGATION", group: 2, weight: 0.424509, radius: 30 },
+      { id: "QUANTITY", group: 3, weight: 0.383739, radius: 30 },
+      { id: "METHOD", group: 4, weight: 0.344153, radius: 25 },
+      { id: "LOCATION", group: 5, weight: 0.429805, radius: 25 },
+      { id: "tons", group: 3, weight: 0.2, radius: 15 },
+      { id: "kilos", group: 3, weight: 0.2, radius: 15 },
+      { id: "hidden", group: 4, weight: 0.2, radius: 15 },
+      { id: "load", group: 4, weight: 0.2, radius: 15 },
+      { id: "europe", group: 5, weight: 0.2, radius: 15 }
+    ];
+
+    const links = [
+      { source: "COCAINE", target: "SEIZURE" },
+      { source: "COCAINE", target: "QUANTITY" },
+      { source: "COCAINE", target: "METHOD" },
+      { source: "COCAINE", target: "LOCATION" },
+      { source: "QUANTITY", target: "tons" },
+      { source: "QUANTITY", target: "kilos" },
+      { source: "METHOD", target: "hidden" },
+      { source: "METHOD", target: "load" },
+      { source: "LOCATION", target: "europe" }
+    ];
+
+    // --- Force-directed layout (2D) with a random or assigned Z dimension ---
+    function calculateForceDirectedPositions(nodes, links) {
+      const simulation = d3.forceSimulation(nodes)
+        .force("link", d3.forceLink(links).id(d => d.id).distance(50))
+        .force("charge", d3.forceManyBody().strength(-50))
+        .force("center", d3.forceCenter(0, 0))
+        .stop();
+
+      // Run the simulation for multiple iterations
+      for (let i = 0; i < 300; ++i) {
+        simulation.tick();
+      }
+
+      // Assign random (or deterministic) Z values for 3D
+      nodes.forEach(node => {
+        node.x = node.x || 0;
+        node.y = node.y || 0;
+        node.z = node.z || (Math.random() * 100 - 50);
+      });
+
+      return nodes;
+    }
+
+    const updatedNodes = calculateForceDirectedPositions(
+      nodes,
+      links.map(link => ({ source: link.source, target: link.target }))
+    );
+
+    // Extract node positions
+    const x = updatedNodes.map(node => node.x);
+    const y = updatedNodes.map(node => node.y);
+    const z = updatedNodes.map(node => node.z);
+    const text = updatedNodes.map(node => node.id);
+
+    // Scatter points for nodes
+    const scatterData = {
+      type: 'scatter3d',
+      mode: 'markers+text',
+      x,
+      y,
+      z,
+      text,
+      textposition: 'top center',
+      marker: {
+        size: updatedNodes.map(node => node.radius),
+        color: updatedNodes.map(node => node.group),
+        opacity: 0.8
+      },
+      showlegend: false
+    };
+
+    // Lines for links
+    const lineData = links.flatMap(link => {
+      const sourceNode = updatedNodes.find(node => node.id === link.source);
+      const targetNode = updatedNodes.find(node => node.id === link.target);
+
+      return {
+        x: [sourceNode.x, targetNode.x, null],
+        y: [sourceNode.y, targetNode.y, null],
+        z: [sourceNode.z, targetNode.z, null],
+        type: 'scatter3d',
+        mode: 'lines',
+        line: {
+          width: 2,
+          color: 'gray'
+        },
+        showlegend: false
+      };
+    });
+
+    const data = [scatterData, ...lineData];
+
+    const layout = {
+      margin: { l: 0, r: 0, b: 0, t: 0 },
+      scene: {
+        xaxis: { title: 'X' },
+        yaxis: { title: 'Y' },
+        zaxis: { title: 'Z' }
+      },
+      showlegend: false
+    };
+
+    // Create or update the plot
+    Plotly.newPlot(plotRef.current, data, layout);
+  }, []);
+
+  return (
+    <div 
+      className="chart-container"
+      style={{
+        height: '600px',
+        marginBottom: '40px'
+      }}
+    >
+      <div 
+        ref={plotRef}
+        style={{ width: '100%', height: '100%' }}
+      ></div>
+    </div>
+  );
+}
+
+
+
+
+
+        const NarrativeFlow = () => {
+            // [Previous data structures remain the same]
+            const timeseriesData = [
+                { 
+                    date: '2022-03',
+                    narrative1: 100,
+                    narrative2: 0,
+                    narrative3: 0,
+                    narrative4: 0,
+                    narrative5: 0,
+                    sentiment: 0.2,
+                    topicStrength: 45,
+                },
+                { 
+                    date: '2022-06',
+                    narrative1: 60,
+                    narrative2: 100,
+                    narrative3: 20,
+                    narrative4: 0,
+                    narrative5: 0,
+                    sentiment: -0.3,
+                    topicStrength: 65,
+                },
+                { 
+                    date: '2022-09',
+                    narrative1: 40,
+                    narrative2: 70,
+                    narrative3: 100,
+                    narrative4: 0,
+                    narrative5: 0,
+                    sentiment: -0.5,
+                    topicStrength: 85,
+                },
+                { 
+                    date: '2023-03',
+                    narrative1: 20,
+                    narrative2: 40,
+                    narrative3: 60,
+                    narrative4: 100,
+                    narrative5: 0,
+                    sentiment: 0.1,
+                    topicStrength: 95,
+                },
+                { 
+                    date: '2023-09',
+                    narrative1: 10,
+                    narrative2: 30,
+                    narrative3: 40,
+                    narrative4: 80,
+                    narrative5: 20,
+                    sentiment: 0.4,
+                    topicStrength: 75,
+                },
+                { 
+                    date: '2024-05',
+                    narrative1: 20,
+                    narrative2: 20,
+                    narrative3: 30,
+                    narrative4: 40,
+                    narrative5: 100,
+                    sentiment: 0.3,
+                    topicStrength: 60,
+                }
+            ];
+
+            const narrativeColors = {
+                narrative1: "#ff4646",
+                narrative2: "#4666ff",
+                narrative3: "#46af46",
+                narrative4: "#9146ff",
+                narrative5: "#ff8c46"
+            };
+
+            const indicatorsData = [
+                // Narrative 1
+                { indicator: "tons cocaine", weight: 0.551048, narrative: "narrative1" },
+                { indicator: "cocaine europe", weight: 0.429805, narrative: "narrative1" },
+                { indicator: "investigation", weight: 0.424509, narrative: "narrative1" },
+                { indicator: "kilos cocaine", weight: 0.383739, narrative: "narrative1" },
+                { indicator: "cocaine seized", weight: 0.364581, narrative: "narrative1" },
+                { indicator: "cocaine hidden", weight: 0.344153, narrative: "narrative1" },
+                { indicator: "seizures", weight: 0.252899, narrative: "narrative1" },
+                { indicator: "alleged cocaine", weight: 0.206691, narrative: "narrative1" },
+                { indicator: "load cocaine", weight: 0.173851, narrative: "narrative1" },
+                { indicator: "seizure", weight: 0.16595, narrative: "narrative1" },
+
+                // Narrative 2
+                { indicator: "arrest", weight: 0.622218, narrative: "narrative2" },
+                { indicator: "arrested", weight: 0.522979, narrative: "narrative2" },
+                { indicator: "international arrest", weight: 0.442146, narrative: "narrative2" },
+                { indicator: "arrest warrant", weight: 0.431221, narrative: "narrative2" },
+                { indicator: "tez arrested", weight: 0.27383, narrative: "narrative2" },
+                { indicator: "arrest judge", weight: 0.161944, narrative: "narrative2" },
+                { indicator: "arrested june", weight: 0.161944, narrative: "narrative2" },
+                { indicator: "learning arrest", weight: 0.161944, narrative: "narrative2" },
+                { indicator: "arrested year", weight: 0.160843, narrative: "narrative2" },
+                { indicator: "arrested carrying", weight: 0.153874, narrative: "narrative2" },
+
+                // Narrative 3
+                { indicator: "extradition", weight: 1.040092, narrative: "narrative3" },
+                { indicator: "extradition request", weight: 0.493924, narrative: "narrative3" },
+                { indicator: "extradition paraguay", weight: 0.343318, narrative: "narrative3" },
+                { indicator: "request extradition", weight: 0.336582, narrative: "narrative3" },
+                { indicator: "confirmed extradition", weight: 0.225154, narrative: "narrative3" },
+                { indicator: "extradition according", weight: 0.1996, narrative: "narrative3" },
+                { indicator: "extradition sports", weight: 0.18356, narrative: "narrative3" },
+                { indicator: "ordered extradition", weight: 0.154994, narrative: "narrative3" },
+                { indicator: "extradition compatriot", weight: 0.133981, narrative: "narrative3" },
+                { indicator: "regulations extradition", weight: 0.133981, narrative: "narrative3" },
+
+                // Narrative 5
+                { indicator: "charges", weight: 0.241108, narrative: "narrative5" },
+                { indicator: "charges alleged", weight: 0.101531, narrative: "narrative5" },
+                { indicator: "charges paraguay", weight: 0.080022, narrative: "narrative5" },
+                { indicator: "faces charges", weight: 0.080022, narrative: "narrative5" },
+                { indicator: "face charges", weight: 0.076242, narrative: "narrative5" },
+                { indicator: "charges national", weight: 0.0724, narrative: "narrative5" },
+                { indicator: "copies charges", weight: 0.0724, narrative: "narrative5" },
+                { indicator: "charges mega", weight: 0.0515, narrative: "narrative5" },
+                { indicator: "sharing charges", weight: 0.0515, narrative: "narrative5" },
+                { indicator: "brought charges", weight: 0.039263, narrative: "narrative5" }
+            ];
+
+            // New data structure for P1 article analysis
+            const p1ArticleData = [
+                { 
+                    article_id: 1,
+                    date: '2022-03-17',
+                    strength_score: 0.8905,
+                    indicator_count: 4,
+                    method: "Matched 4 indicators: investigation, alleged cocaine, seizure, load cocaine"
+                },
+                {
+                    article_id: 2,
+                    date: '2022-06-13',
+                    strength_score: 1.2522,
+                    indicator_count: 7,
+                    method: "Matched 7 indicators: cocaine hidden, seizures, investigation"
+                },
+                {
+                    article_id: 3,
+                    date: '2022-06-13',
+                    strength_score: 1.3719,
+                    indicator_count: 7,
+                    method: "Matched 7 indicators: investigation, seizures, kilos cocaine"
+                },
+                {
+                    article_id: 4,
+                    date: '2022-06-14',
+                    strength_score: 0.157,
+                    indicator_count: 2,
+                    method: "Matched 2 indicators: cocaine shipments, cocaine seized"
+                },
+                {
+                    article_id: 6,
+                    date: '2022-06-22',
+                    strength_score: 0.843,
+                    indicator_count: 4,
+                    method: "Matched 4 indicators: cocaine hidden, seizures, alleged cocaine"
+                }
+            ];
+
+
+        const p2ArticleData = [
+            {
+                article_id: 2,
+                date: '2022-06-13',
+                strength_score: 0.8708,
+                indicator_count: 5,
+                method: "Matched 5 indicators: arrest, arrested, international arrest"
+            },
+            {
+                article_id: 3,
+                date: '2022-06-13',
+                strength_score: 1.0134,
+                indicator_count: 6,
+                method: "Matched 6 indicators: arrest, arrested june, arrest warrant"
+            },
+            {
+                article_id: 4,
+                date: '2022-06-14',
+                strength_score: 0.5073,
+                indicator_count: 3,
+                method: "Matched 3 indicators: arrested, international arrest"
+            },
+            {
+                article_id: 7,
+                date: '2022-06-12',
+                strength_score: 0.4617,
+                indicator_count: 3,
+                method: "Matched 3 indicators: arrest, arrested, learning arrest"
+            },
+            {
+                article_id: 10,
+                date: '2022-07-18',
+                strength_score: 0.4092,
+                indicator_count: 3,
+                method: "Matched 3 indicators: arrest, arrested carrying"
+            }
+        ];
+
+        const p3ArticleData = [
+            {
+                article_id: 1,
+                date: '2022-03-17',
+                strength_score: 0.4939,
+                indicator_count: 3,
+                method: "Matched 3 indicators: extradition request, extradition paraguay"
+            },
+            {
+                article_id: 2,
+                date: '2022-06-13',
+                strength_score: 1.0401,
+                indicator_count: 5,
+                method: "Matched 5 indicators: extradition, request extradition"
+            },
+            {
+                article_id: 3,
+                date: '2022-06-13',
+                strength_score: 0.8724,
+                indicator_count: 4,
+                method: "Matched 4 indicators: confirmed extradition, request extradition"
+            },
+            {
+                article_id: 5,
+                date: '2022-06-20',
+                strength_score: 0.5543,
+                indicator_count: 3,
+                method: "Matched 3 indicators: extradition, ordered extradition"
+            },
+            {
+                article_id: 8,
+                date: '2022-06-27',
+                strength_score: 0.4436,
+                indicator_count: 3,
+                method: "Matched 3 indicators: extradition sports, regulations extradition"
+            }
+        ];
+
+        const p5ArticleData = [
+            {
+                article_id: 2,
+                date: '2022-06-13',
+                strength_score: 0.2411,
+                indicator_count: 2,
+                method: "Matched 2 indicators: charges alleged, face charges"
+            },
+            {
+                article_id: 3,
+                date: '2022-06-13',
+                strength_score: 0.3225,
+                indicator_count: 3,
+                method: "Matched 3 indicators: charges paraguay, brought charges"
+            },
+            {
+                article_id: 4,
+                date: '2022-06-14',
+                strength_score: 0.1015,
+                indicator_count: 1,
+                method: "Matched 1 indicator: charges"
+            },
+            {
+                article_id: 6,
+                date: '2022-06-22',
+                strength_score: 0.0724,
+                indicator_count: 1,
+                method: "Matched 1 indicator: copies charges"
+            },
+            {
+                article_id: 10,
+                date: '2022-07-18',
+                strength_score: 0.0515,
+                indicator_count: 1,
+                method: "Matched 1 indicator: sharing charges"
+            }
+        ];
+
+
+
+
+
+            return (
+                <>
+                <h1>Narrative Evolution Over Time</h1>
+                    <div className="chart-container">
+                        <div style={{ height: '400px' }}>
+                            <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart data={timeseriesData}>
+                                    <defs>
+                                        {Object.entries(narrativeColors).map(([key, color]) => (
+                                            <linearGradient key={key} id={key} x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor={color} stopOpacity={0.8}/>
+                                                <stop offset="95%" stopColor={color} stopOpacity={0.2}/>
+                                            </linearGradient>
+                                        ))}
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" />
+                                    <XAxis dataKey="date" />
+                                    <YAxis />
+                                    <Tooltip />
+                                    <Legend />
+                                    {Object.entries(narrativeColors).map(([key, color]) => (
+                                        <Area 
+                                            key={key}
+                                            type="monotone" 
+                                            dataKey={key} 
+                                            stroke={color} 
+                                            fillOpacity={1} 
+                                            fill={`url(#${key})`} 
+                                            name={`Phase ${key.slice(-1)}: ${
+                                                key === 'narrative1' ? 'Initial Crime & Investigation' :
+                                                key === 'narrative2' ? 'Arrest & Initial Proceedings' :
+                                                key === 'narrative3' ? 'Extradition Process' :
+                                                key === 'narrative4' ? 'Legal Complications' :
+                                                'Resolution & Final Charges'
+                                            }`}
+                                        />
+                                    ))}
+                                </AreaChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+
+                    <h1>PLACEHOLDER Sentiment and Topic Strength</h1>
+                    <div className="chart-container">
+                        <div style={{ height: '400px' }}>
+                            <ResponsiveContainer width="100%" height="100%">
+                                <LineChart data={timeseriesData}>
+                                    <CartesianGrid strokeDasharray="3 3" />
+                                    <XAxis dataKey="date" />
+                                    <YAxis yAxisId="left" />
+                                    <YAxis yAxisId="right" orientation="right" />
+                                    <Tooltip />
+                                    <Legend />
+                                    <Line 
+                                        yAxisId="left"
+                                        type="monotone" 
+                                        dataKey="sentiment" 
+                                        stroke="#ff4646" 
+                                        name="Sentiment"
+                                        dot={{ stroke: '#ff4646', strokeWidth: 2, r: 4 }}
+                                    />
+                                    <Line 
+                                        yAxisId="right"
+                                        type="monotone" 
+                                        dataKey="topicStrength" 
+                                        stroke="#666666" 
+                                        name="Topic Strength"
+                                        dot={{ stroke: '#666666', strokeWidth: 2, r: 4 }}
+                                    />
+                                </LineChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+
+                    <h1>Narrative Indicators & Weights</h1>
+
+
+
+                    <div className="chart-container" style={{ marginBottom: '20px' }}>
+                    <div 
+                        className="text-box" 
+                        style={{
+                            background: 'white',
+                            padding: '20px',
+                            borderRadius: '8px',
+                            boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+                            marginBottom: '20px',
+                            lineHeight: '1.6',
+                            color: '#333',
+                        }}
+                    >
+                    <h2 style={{ 
+                        marginBottom: '10px', 
+                        color: '#333', 
+                        fontWeight: 'bold', 
+                        textAlign: 'left' 
+                    }}>
+                        Introduction to Narrative Indicators & Weights
+                    </h2>
+
+                        <p>
+                            This visualisation highlights the key indicators associated with each of the five identified narratives in the corpus. 
+                            Each bar represents a specific term or phrase that signals the presence of a particular narrative, with the length 
+                            of the bar corresponding to the weight assigned to that indicator. The weights reflect the relative importance or 
+                            relevance of each indicator in identifying and defining the narrative.<br />
+                        </p>
+                        <p>
+                            <br />For instance, in Narrative 1 (red), terms such as "tons cocaine" and "investigation" carry the highest weights, 
+                            indicating their strong association with this narrative. Similarly, in Narrative 3 (green), "extradition" has the 
+                            highest weight, showing its dominant role in that narrative.<br />
+                        </p>
+                        <p>
+                            <br />This breakdown helps to visualise the building blocks of each narrative, offering insights into how articles are 
+                            classified and scored based on their content. The indicator weights are a crucial component in determining the 
+                            strength of narrative presence in each article, as reflected in subsequent analysis.<br />
+                        </p>
+                    </div>
+                </div>
+
+
+
+
+
+                <h3>Chart 1: Narrative Indicators & Weights</h3>
+
+                    <div className="chart-container" style={{ height: '1600px' }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart 
+                                layout="vertical" 
+                                data={indicatorsData}
+                                margin={{ top: 20, right: 20, left: 1, bottom: 20 }}
+                            >
+                                <CartesianGrid strokeDasharray="3 3" />
+                                <XAxis 
+                                    type="number" 
+                                    domain={[0, 1.2]} 
+                                    tickFormatter={value => value.toFixed(2)}
+                                />
+                                <YAxis 
+                                    dataKey="indicator" 
+                                    type="category" 
+                                    width={180}
+                                />
+                                <Tooltip 
+                                    formatter={(value) => [value.toFixed(3), "Weight"]}
+                                />
+                                <Bar dataKey="weight" name="Weight">
+                                    <LabelList 
+                                        dataKey="weight" 
+                                        position="right" 
+                                        formatter={value => value.toFixed(3)}
+                                    />
+                                    {indicatorsData.map((entry, index) => (
+                                        <Cell 
+                                            key={`cell-${index}`} 
+                                            fill={narrativeColors[entry.narrative]} 
+                                        />
+                                    ))}
+                                </Bar>
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+
+
+
+
+
+                    <div className="chart-container" style={{ marginBottom: '20px' }}>
+                    <div 
+                        className="text-box" 
+                        style={{
+                            background: 'white',
+                            padding: '20px',
+                            borderRadius: '8px',
+                            boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+                            marginBottom: '20px',
+                            lineHeight: '1.6',
+                            color: '#333',
+                        }}
+                    >
+                        <h2 style={{ 
+                            marginBottom: '10px', 
+                            color: '#333', 
+                            fontWeight: 'bold', 
+                            textAlign: 'left' 
+                        }}>
+                            High-Level Summary
+                        </h2>
+                        <p>
+                            This section provides a detailed visual analysis of the presence and evolution of the narrative within the corpus:
+                        </p>
+                        <br />
+                        <ul style={{ marginLeft: '20px', marginBottom: '10px' }}>
+                            <li>
+                                <strong>Scatter Plot:</strong> Each dot represents an article containing one or more indicators of the narrative. 
+                                The <em>x-axis</em> shows the aggregated <strong>strength score</strong> (the total weight of the indicators), and the 
+                                <em>y-axis</em> indicates the <strong>number of indicators</strong> found in that article. This chart offers a snapshot 
+                                of how strongly the narrative appears in individual articles.
+                            </li>
+                            <br />
+                            <li>
+                                <strong>Line Plot:</strong> This graph tracks the narrative's <strong>strength score</strong> over time, highlighting peaks 
+                                and troughs. It provides insights into the timeline of the narrative's presence and intensity within the data.
+                            </li>
+                            <br />
+                            <li>
+                                <strong>Combined Bar/Line Chart:</strong> This decomposes the narrative's evolution further by displaying:
+                                <ul style={{ marginLeft: '20px' }}>
+                                    <li><strong>Bars:</strong> Representing the aggregated strength score.</li>
+                                    <li><strong>Line:</strong> Representing the number of indicators. Together, these elements help to reveal 
+                                    whether the strength of the narrative is driven by a high count of indicators or by the relative importance of specific terms.</li>
+                                </ul>
+                            </li>
+                        </ul>
+                        <br />
+                        <p>
+                            These three visualisations collectively demonstrate the extent, timing, and intensity of the narrative, offering 
+                            a comprehensive understanding of its behaviour in the data.
+                        </p>
+                    </div>
+                </div>
+
+<h2>Narrative 1: Initial Crime & Investigation - Article Analysis</h2>
+
+
+            <div className="chart-container" style={{ marginBottom: '20px' }}>
+                    <div 
+                        className="text-box" 
+                        style={{
+                            background: 'white',
+                            padding: '20px',
+                            borderRadius: '8px',
+                            boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+                            marginBottom: '20px',
+                            lineHeight: '1.6',
+                            color: '#333',
+                        }}
+                    >
+                    <h2 style={{ 
+                        marginBottom: '10px', 
+                        color: '#333', 
+                        fontWeight: 'bold', 
+                        textAlign: 'left' 
+                    }}>
+                        Concept Network 2D Overview
+                    </h2>
+                        <p>
+                            This visualisation is a force-directed graph showing how key terms (represented as nodes) relate to one another within the narrative. Node size reflects each term’s relative weight or importance, while the connecting lines (links) indicate the relationships or co-occurrence strength between these terms. You can click and drag nodes to explore the layout, as well as zoom in and out for closer inspection. This network approach helps to reveal clusters of related concepts and highlight how different elements of the narrative interconnect.
+                        </p>
+                        <ConceptNetwork2D />
+                    </div>
+                </div>   
+
+
+
+
+                <div className="chart-container" style={{ marginBottom: '20px' }}>
+                    <div 
+                        className="text-box" 
+                        style={{
+                            background: 'white',
+                            padding: '20px',
+                            borderRadius: '8px',
+                            boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+                            marginBottom: '20px',
+                            lineHeight: '1.6',
+                            color: '#333',
+                        }}
+                    >
+                    <h2 style={{ 
+                        marginBottom: '10px', 
+                        color: '#333', 
+                        fontWeight: 'bold', 
+                        textAlign: 'left' 
+                    }}>
+                        Concept Network 3D Overview
+                    </h2>
+                        <p>
+                            This 3D scatter plot arranges key terms (nodes) in three-dimensional space, connected by links representing their relationships or co-occurrences. A force-directed algorithm determines the layout, projecting related concepts closer together. You can freely rotate, zoom, and pan the 3D environment, helping you explore clusters, spot key nodes, and gain a deeper understanding of how concepts interlink within the narrative.                        </p>
+                        <ConceptNetwork3D />
+                        <ConceptNetwork3DAlt />
+
+                    </div>
+                </div>   
+
+
+
+
+{/* Scatter Plot */}
+<h3>Graph 1: Scatter Plot of Narrative Presence by Strength and Indicator Count</h3>
+<div className="chart-container">
+    <div style={{ height: '400px' }}>
+        <ResponsiveContainer width="100%" height="100%">
+            <ScatterChart
+                margin={{ top: 20, right: 20, bottom: 40, left: 40 }}
+            >
+                <CartesianGrid />
+                <XAxis 
+                    type="number" 
+                    dataKey="strength_score" 
+                    name="Strength"
+                    domain={[0, 1.5]}
+                    label={{ value: 'Strength Score', position: 'bottom' }}
+                />
+                <YAxis 
+                    type="number" 
+                    dataKey="indicator_count" 
+                    name="Indicators"
+                    domain={[0, 8]}
+                    label={{ value: 'Number of Indicators', angle: -90, position: 'left' }}
+                />
+                <Tooltip 
+                    cursor={{ strokeDasharray: '3 3' }}
+                    content={({ active, payload }) => {
+                        if (active && payload && payload.length) {
+                            const data = payload[0].payload;
+                            return (
+                                <div style={{ 
+                                    backgroundColor: 'white', 
+                                    padding: '10px',
+                                    border: '1px solid #ccc'
+                                }}>
+                                    <p>Article {data.article_id}</p>
+                                    <p>Date: {data.date}</p>
+                                    <p>Strength: {data.strength_score.toFixed(4)}</p>
+                                    <p>{data.method}</p>
+                                </div>
+                            );
+                        }
+                        return null;
+                    }}
+                />
+                <Scatter 
+                    data={p1ArticleData} 
+                    fill="#ff4646"
+                />
+            </ScatterChart>
+        </ResponsiveContainer>
+    </div>
+</div>
+
+{/* Timeline */}
+<h3>Graph 2: Timeline of Narrative Strength Over Time</h3>
+<div className="chart-container">
+    <div style={{ height: '400px' }}>
+        <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={p1ArticleData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis 
+                    dataKey="date" 
+                    type="category"
+                />
+                <YAxis 
+                    domain={[0, 1.5]}
+                    label={{ value: 'Strength Score', angle: -90, position: 'left' }}
+                />
+                <Tooltip content={({ active, payload }) => {
+                    if (active && payload && payload.length) {
+                        const data = payload[0].payload;
+                        return (
+                            <div style={{ 
+                                backgroundColor: 'white', 
+                                padding: '10px',
+                                border: '1px solid #ccc'
+                            }}>
+                                <p>Article {data.article_id}</p>
+                                <p>Strength: {data.strength_score.toFixed(4)}</p>
+                                <p>Indicators: {data.indicator_count}</p>
+                                <p>{data.method}</p>
+                            </div>
+                        );
+                    }
+                    return null;
+                }}/>
+                <Legend />
+                <Line 
+                    type="monotone" 
+                    dataKey="strength_score" 
+                    stroke="#ff4646" 
+                    name="Strength Score"
+                    dot={{ 
+                        stroke: '#ff4646',
+                        strokeWidth: 2,
+                        r: data => data.indicator_count * 2  // Size based on indicator count
+                    }}
+                />
+            </LineChart>
+        </ResponsiveContainer>
+    </div>
+</div>
+
+{/* Combined View */}
+<h3>Graph 3: Decomposed View of Strength Score and Indicator Count</h3>
+<div className="chart-container">
+    <div style={{ height: '400px' }}>
+        <ResponsiveContainer width="100%" height="100%">
+            <ComposedChart 
+                data={p1ArticleData}
+                margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+            >
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="date" />
+                <YAxis 
+                    yAxisId="left"
+                    domain={[0, 1.5]}
+                    label={{ value: 'Strength Score', angle: -90, position: 'left' }}
+                />
+                <YAxis 
+                    yAxisId="right" 
+                    orientation="right"
+                    domain={[0, 8]}
+                    label={{ value: 'Indicator Count', angle: 90, position: 'right' }}
+                />
+                <Tooltip content={({ active, payload }) => {
+                    if (active && payload && payload.length) {
+                        const data = payload[0].payload;
+                        return (
+                            <div style={{ 
+                                backgroundColor: 'white', 
+                                padding: '10px',
+                                border: '1px solid #ccc'
+                            }}>
+                                <p>Article {data.article_id}</p>
+                                <p>Strength: {data.strength_score.toFixed(4)}</p>
+                                <p>Indicators: {data.indicator_count}</p>
+                                <p>{data.method}</p>
+                            </div>
+                        );
+                    }
+                    return null;
+                }}/>
+                <Legend />
+                <Bar 
+                    yAxisId="left"
+                    dataKey="strength_score" 
+                    fill="#ff4646" 
+                    name="Strength Score"
+                />
+                <Line 
+                    yAxisId="right"
+                    type="monotone" 
+                    dataKey="indicator_count" 
+                    stroke="#000000" 
+                    name="Indicator Count"
+                    dot={{ stroke: '#000000', strokeWidth: 2, r: 4 }}
+                />
+            </ComposedChart>
+        </ResponsiveContainer>
+    </div>
+</div>
+
+
+                    
+                    <h2>Narrative 2: Arrest & Initial Proceedings - Article Analysis</h2>
+                    <h3>Graph 1: Scatter Plot of Narrative Presence by Strength and Indicator Count</h3>
+                    {/* Scatter Plot */}
+                    <div className="chart-container">
+                        <div style={{ height: '400px' }}>
+                            <ResponsiveContainer width="100%" height="100%">
+                                <ScatterChart
+                                    margin={{ top: 20, right: 20, bottom: 40, left: 40 }}
+                                >
+                                    <CartesianGrid />
+                                    <XAxis 
+                                        type="number" 
+                                        dataKey="strength_score" 
+                                        name="Strength"
+                                        domain={[0, 1.5]}
+                                        label={{ value: 'Strength Score', position: 'bottom' }}
+                                    />
+                                    <YAxis 
+                                        type="number" 
+                                        dataKey="indicator_count" 
+                                        name="Indicators"
+                                        domain={[0, 8]}
+                                        label={{ value: 'Number of Indicators', angle: -90, position: 'left' }}
+                                    />
+                                    <Tooltip 
+                                        cursor={{ strokeDasharray: '3 3' }}
+                                        content={({ active, payload }) => {
+                                            if (active && payload && payload.length) {
+                                                const data = payload[0].payload;
+                                                return (
+                                                    <div style={{ 
+                                                        backgroundColor: 'white', 
+                                                        padding: '10px',
+                                                        border: '1px solid #ccc'
+                                                    }}>
+                                                        <p>Article {data.article_id}</p>
+                                                        <p>Date: {data.date}</p>
+                                                        <p>Strength: {data.strength_score.toFixed(4)}</p>
+                                                        <p>{data.method}</p>
+                                                    </div>
+                                                );
+                                            }
+                                            return null;
+                                        }}
+                                    />
+                                    <Scatter 
+                                        data={p2ArticleData} 
+                                        fill="#4666ff"
+                                    />
+                                </ScatterChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+
+                    {/* Timeline */}
+                    <h3>Graph 2: Timeline of Narrative Strength Over Time</h3>
+
+                    <div className="chart-container">
+                        <div style={{ height: '400px' }}>
+                            <ResponsiveContainer width="100%" height="100%">
+                                <LineChart data={p2ArticleData}>
+                                    <CartesianGrid strokeDasharray="3 3" />
+                                    <XAxis 
+                                        dataKey="date" 
+                                        type="category"
+                                    />
+                                    <YAxis 
+                                        domain={[0, 1.5]}
+                                        label={{ value: 'Strength Score', angle: -90, position: 'left' }}
+                                    />
+                                    <Tooltip content={({ active, payload }) => {
+                                        if (active && payload && payload.length) {
+                                            const data = payload[0].payload;
+                                            return (
+                                                <div style={{ 
+                                                    backgroundColor: 'white', 
+                                                    padding: '10px',
+                                                    border: '1px solid #ccc'
+                                                }}>
+                                                    <p>Article {data.article_id}</p>
+                                                    <p>Strength: {data.strength_score.toFixed(4)}</p>
+                                                    <p>Indicators: {data.indicator_count}</p>
+                                                    <p>{data.method}</p>
+                                                </div>
+                                            );
+                                        }
+                                        return null;
+                                    }}/>
+                                    <Legend />
+                                    <Line 
+                                        type="monotone" 
+                                        dataKey="strength_score" 
+                                        stroke="#4666ff" 
+                                        name="Strength Score"
+                                        dot={{ 
+                                            stroke: '#4666ff',
+                                            strokeWidth: 2,
+                                            r: data => data.indicator_count * 2
+                                        }}
+                                    />
+                                </LineChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+
+                    {/* Combined View */}
+                    <h3>Graph 3: Decomposed View of Strength Score and Indicator Count</h3>
+                    <div className="chart-container">
+                        <div style={{ height: '400px' }}>
+                            <ResponsiveContainer width="100%" height="100%">
+                                <ComposedChart 
+                                    data={p2ArticleData}
+                                    margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                                >
+                                    <CartesianGrid strokeDasharray="3 3" />
+                                    <XAxis dataKey="date" />
+                                    <YAxis 
+                                        yAxisId="left"
+                                        domain={[0, 1.5]}
+                                        label={{ value: 'Strength Score', angle: -90, position: 'left' }}
+                                    />
+                                    <YAxis 
+                                        yAxisId="right" 
+                                        orientation="right"
+                                        domain={[0, 8]}
+                                        label={{ value: 'Indicator Count', angle: 90, position: 'right' }}
+                                    />
+                                    <Tooltip content={({ active, payload }) => {
+                                        if (active && payload && payload.length) {
+                                            const data = payload[0].payload;
+                                            return (
+                                                <div style={{ 
+                                                    backgroundColor: 'white', 
+                                                    padding: '10px',
+                                                    border: '1px solid #ccc'
+                                                }}>
+                                                    <p>Article {data.article_id}</p>
+                                                    <p>Strength: {data.strength_score.toFixed(4)}</p>
+                                                    <p>Indicators: {data.indicator_count}</p>
+                                                    <p>{data.method}</p>
+                                                </div>
+                                            );
+                                        }
+                                        return null;
+                                    }}/>
+                                    <Legend />
+                                    <Bar 
+                                        yAxisId="left"
+                                        dataKey="strength_score" 
+                                        fill="#4666ff" 
+                                        name="Strength Score"
+                                    />
+                                    <Line 
+                                        yAxisId="right"
+                                        type="monotone" 
+                                        dataKey="indicator_count" 
+                                        stroke="#000000" 
+                                        name="Indicator Count"
+                                        dot={{ stroke: '#000000', strokeWidth: 2, r: 4 }}
+                                    />
+                                </ComposedChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+
+                    <h2>Narrative 3: Extradition Process - Article Analysis</h2>
+                    {/* Scatter Plot */}
+                    <h3>Graph 1: Scatter Plot of Narrative Presence by Strength and Indicator Count</h3>
+                    <div className="chart-container">
+                        <div style={{ height: '400px' }}>
+                            <ResponsiveContainer width="100%" height="100%">
+                                <ScatterChart
+                                    margin={{ top: 20, right: 20, bottom: 40, left: 40 }}
+                                >
+                                    <CartesianGrid />
+                                    <XAxis 
+                                        type="number" 
+                                        dataKey="strength_score" 
+                                        name="Strength"
+                                        domain={[0, 1.5]}
+                                        label={{ value: 'Strength Score', position: 'bottom' }}
+                                    />
+                                    <YAxis 
+                                        type="number" 
+                                        dataKey="indicator_count" 
+                                        name="Indicators"
+                                        domain={[0, 8]}
+                                        label={{ value: 'Number of Indicators', angle: -90, position: 'left' }}
+                                    />
+                                    <Tooltip 
+                                        cursor={{ strokeDasharray: '3 3' }}
+                                        content={({ active, payload }) => {
+                                            if (active && payload && payload.length) {
+                                                const data = payload[0].payload;
+                                                return (
+                                                    <div style={{ 
+                                                        backgroundColor: 'white', 
+                                                        padding: '10px',
+                                                        border: '1px solid #ccc'
+                                                    }}>
+                                                        <p>Article {data.article_id}</p>
+                                                        <p>Date: {data.date}</p>
+                                                        <p>Strength: {data.strength_score.toFixed(4)}</p>
+                                                        <p>{data.method}</p>
+                                                    </div>
+                                                );
+                                            }
+                                            return null;
+                                        }}
+                                    />
+                                    <Scatter 
+                                        data={p3ArticleData} 
+                                        fill="#46af46"
+                                    />
+                                </ScatterChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+
+                    {/* Timeline */}
+                    <h3>Graph 2: Timeline of Narrative Strength Over Time</h3>
+
+                    <div className="chart-container">
+                        <div style={{ height: '400px' }}>
+                            <ResponsiveContainer width="100%" height="100%">
+                                <LineChart data={p3ArticleData}>
+                                    <CartesianGrid strokeDasharray="3 3" />
+                                    <XAxis 
+                                        dataKey="date" 
+                                        type="category"
+                                    />
+                                    <YAxis 
+                                        domain={[0, 1.5]}
+                                        label={{ value: 'Strength Score', angle: -90, position: 'left' }}
+                                    />
+                                    <Tooltip content={({ active, payload }) => {
+                                        if (active && payload && payload.length) {
+                                            const data = payload[0].payload;
+                                            return (
+                                                <div style={{ 
+                                                    backgroundColor: 'white', 
+                                                    padding: '10px',
+                                                    border: '1px solid #ccc'
+                                                }}>
+                                                    <p>Article {data.article_id}</p>
+                                                    <p>Strength: {data.strength_score.toFixed(4)}</p>
+                                                    <p>Indicators: {data.indicator_count}</p>
+                                                    <p>{data.method}</p>
+                                                </div>
+                                            );
+                                        }
+                                        return null;
+                                    }}/>
+                                    <Legend />
+                                    <Line 
+                                        type="monotone" 
+                                        dataKey="strength_score" 
+                                        stroke="#46af46" 
+                                        name="Strength Score"
+                                        dot={{ 
+                                            stroke: '#46af46',
+                                            strokeWidth: 2,
+                                            r: data => data.indicator_count * 2
+                                        }}
+                                    />
+                                </LineChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+
+                    {/* Combined View */}
+                    <h3>Graph 3: Decomposed View of Strength Score and Indicator Count</h3>
+                    <div className="chart-container">
+                        <div style={{ height: '400px' }}>
+                            <ResponsiveContainer width="100%" height="100%">
+                                <ComposedChart 
+                                    data={p3ArticleData}
+                                    margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                                >
+                                    <CartesianGrid strokeDasharray="3 3" />
+                                    <XAxis dataKey="date" />
+                                    <YAxis 
+                                        yAxisId="left"
+                                        domain={[0, 1.5]}
+                                        label={{ value: 'Strength Score', angle: -90, position: 'left' }}
+                                    />
+                                    <YAxis 
+                                        yAxisId="right" 
+                                        orientation="right"
+                                        domain={[0, 8]}
+                                        label={{ value: 'Indicator Count', angle: 90, position: 'right' }}
+                                    />
+                                    <Tooltip content={({ active, payload }) => {
+                                        if (active && payload && payload.length) {
+                                            const data = payload[0].payload;
+                                            return (
+                                                <div style={{ 
+                                                    backgroundColor: 'white', 
+                                                    padding: '10px',
+                                                    border: '1px solid #ccc'
+                                                }}>
+                                                    <p>Article {data.article_id}</p>
+                                                    <p>Strength: {data.strength_score.toFixed(4)}</p>
+                                                    <p>Indicators: {data.indicator_count}</p>
+                                                    <p>{data.method}</p>
+                                                </div>
+                                            );
+                                        }
+                                        return null;
+                                    }}/>
+                                    <Legend />
+                                    <Bar 
+                                        yAxisId="left"
+                                        dataKey="strength_score" 
+                                        fill="#46af46" 
+                                        name="Strength Score"
+                                    />
+                                    <Line 
+                                        yAxisId="right"
+                                        type="monotone" 
+                                        dataKey="indicator_count" 
+                                        stroke="#000000" 
+                                        name="Indicator Count"
+                                        dot={{ stroke: '#000000', strokeWidth: 2, r: 4 }}
+                                    />
+                                </ComposedChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+
+                    <h2>Narrative 5: Resolution & Charges - Article Analysis</h2>
+                        {/* Scatter Plot */}
+                        <h3>Graph 1: Scatter Plot of Narrative Presence by Strength and Indicator Count</h3>
+                        <div className="chart-container">
+                            <div style={{ height: '400px' }}>
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <ScatterChart
+                                        margin={{ top: 20, right: 20, bottom: 40, left: 40 }}
+                                    >
+                                        <CartesianGrid />
+                                        <XAxis 
+                                            type="number" 
+                                            dataKey="strength_score" 
+                                            name="Strength"
+                                            domain={[0, 0.4]}
+                                            label={{ value: 'Strength Score', position: 'bottom' }}
+                                        />
+                                        <YAxis 
+                                            type="number" 
+                                            dataKey="indicator_count" 
+                                            name="Indicators"
+                                            domain={[0, 4]}
+                                            label={{ value: 'Number of Indicators', angle: -90, position: 'left' }}
+                                        />
+                                        <Tooltip 
+                                            cursor={{ strokeDasharray: '3 3' }}
+                                            content={({ active, payload }) => {
+                                                if (active && payload && payload.length) {
+                                                    const data = payload[0].payload;
+                                                    return (
+                                                        <div style={{ 
+                                                            backgroundColor: 'white', 
+                                                            padding: '10px',
+                                                            border: '1px solid #ccc'
+                                                        }}>
+                                                            <p>Article {data.article_id}</p>
+                                                            <p>Date: {data.date}</p>
+                                                            <p>Strength: {data.strength_score.toFixed(4)}</p>
+                                                            <p>{data.method}</p>
+                                                        </div>
+                                                    );
+                                                }
+                                                return null;
+                                            }}
+                                        />
+                                        <Scatter 
+                                            data={p5ArticleData} 
+                                            fill="#ff8c46"
+                                        />
+                                    </ScatterChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+
+                        {/* Timeline */}
+                        <h3>Graph 2: Timeline of Narrative Strength Over Time</h3>
+
+                        <div className="chart-container">
+                            <div style={{ height: '400px' }}>
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <LineChart data={p5ArticleData}>
+                                        <CartesianGrid strokeDasharray="3 3" />
+                                        <XAxis 
+                                            dataKey="date" 
+                                            type="category"
+                                        />
+                                        <YAxis 
+                                            domain={[0, 0.4]}
+                                            label={{ value: 'Strength Score', angle: -90, position: 'left' }}
+                                        />
+                                        <Tooltip content={({ active, payload }) => {
+                                            if (active && payload && payload.length) {
+                                                const data = payload[0].payload;
+                                                return (
+                                                    <div style={{ 
+                                                        backgroundColor: 'white', 
+                                                        padding: '10px',
+                                                        border: '1px solid #ccc'
+                                                    }}>
+                                                        <p>Article {data.article_id}</p>
+                                                        <p>Strength: {data.strength_score.toFixed(4)}</p>
+                                                        <p>Indicators: {data.indicator_count}</p>
+                                                        <p>{data.method}</p>
+                                                    </div>
+                                                );
+                                            }
+                                            return null;
+                                        }}/>
+                                        <Legend />
+                                        <Line 
+                                            type="monotone" 
+                                            dataKey="strength_score" 
+                                            stroke="#ff8c46" 
+                                            name="Strength Score"
+                                            dot={{ 
+                                                stroke: '#ff8c46',
+                                                strokeWidth: 2,
+                                                r: data => data.indicator_count * 2
+                                            }}
+                                        />
+                                    </LineChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+
+                        {/* Combined View */}
+                        <h3>Graph 3: Decomposed View of Strength Score and Indicator Count</h3>
+                        <div className="chart-container">
+                            <div style={{ height: '400px' }}>
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <ComposedChart 
+                                        data={p5ArticleData}
+                                        margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                                    >
+                                        <CartesianGrid strokeDasharray="3 3" />
+                                        <XAxis dataKey="date" />
+                                        <YAxis 
+                                            yAxisId="left"
+                                            domain={[0, 0.4]}
+                                            label={{ value: 'Strength Score', angle: -90, position: 'left' }}
+                                        />
+                                        <YAxis 
+                                            yAxisId="right" 
+                                            orientation="right"
+                                            domain={[0, 4]}
+                                            label={{ value: 'Indicator Count', angle: 90, position: 'right' }}
+                                        />
+                                        <Tooltip content={({ active, payload }) => {
+                                            if (active && payload && payload.length) {
+                                                const data = payload[0].payload;
+                                                return (
+                                                    <div style={{ 
+                                                        backgroundColor: 'white', 
+                                                        padding: '10px',
+                                                        border: '1px solid #ccc'
+                                                    }}>
+                                                        <p>Article {data.article_id}</p>
+                                                        <p>Strength: {data.strength_score.toFixed(4)}</p>
+                                                        <p>Indicators: {data.indicator_count}</p>
+                                                        <p>{data.method}</p>
+                                                    </div>
+                                                );
+                                            }
+                                            return null;
+                                        }}/>
+                                        <Legend />
+                                        <Bar 
+                                            yAxisId="left"
+                                            dataKey="strength_score" 
+                                            fill="#ff8c46" 
+                                            name="Strength Score"
+                                        />
+                                        <Line 
+                                            yAxisId="right"
+                                            type="monotone" 
+                                            dataKey="indicator_count" 
+                                            stroke="#000000" 
+                                            name="Indicator Count"
+                                            dot={{ stroke: '#000000', strokeWidth: 2, r: 4 }}
+                                        />
+                                    </ComposedChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+
+                </>
+            );
+        };
+
+        // Render the app
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<NarrativeFlow />);
+    </script>
+</body>
+</html>

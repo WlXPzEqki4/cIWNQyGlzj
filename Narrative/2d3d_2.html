@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Concept Network Test</title>
+    
+    <!-- Dependencies -->
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.development.js"></script>
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.development.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+
+    <style>
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .viz-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useRef, useEffect } = React;
+
+        // 2D Visualization Component
+        const ConceptNetwork2D = () => {
+            const svgRef = useRef();
+    
+            const nodes = [
+                { id: "COCAINE", group: 1, weight: 0.551048, radius: 40 },
+                { id: "SEIZURE", group: 1, weight: 0.364581, radius: 35 },
+                { id: "INVESTIGATION", group: 2, weight: 0.424509, radius: 30 },
+                { id: "QUANTITY", group: 3, weight: 0.383739, radius: 30 },
+                { id: "METHOD", group: 4, weight: 0.344153, radius: 25 },
+                { id: "LOCATION", group: 5, weight: 0.429805, radius: 25 },
+                
+                { id: "tons", group: 3, weight: 0.2, radius: 15 },
+                { id: "kilos", group: 3, weight: 0.2, radius: 15 },
+                { id: "hidden", group: 4, weight: 0.2, radius: 15 },
+                { id: "load", group: 4, weight: 0.2, radius: 15 },
+                { id: "europe", group: 5, weight: 0.2, radius: 15 }
+            ];
+    
+            const links = [
+                { source: "COCAINE", target: "SEIZURE", value: 5 },
+                { source: "COCAINE", target: "QUANTITY", value: 4 },
+                { source: "COCAINE", target: "METHOD", value: 3 },
+                { source: "COCAINE", target: "LOCATION", value: 3 },
+                
+                { source: "QUANTITY", target: "tons", value: 2 },
+                { source: "QUANTITY", target: "kilos", value: 2 },
+                { source: "METHOD", target: "hidden", value: 2 },
+                { source: "METHOD", target: "load", value: 2 },
+                { source: "LOCATION", target: "europe", value: 2 }
+            ];
+    
+            useEffect(() => {
+                const width = 800;
+                const height = 600;
+    
+                d3.select(svgRef.current).selectAll("*").remove();
+    
+                const svg = d3.select(svgRef.current)
+                    .attr("width", width)
+                    .attr("height", height);
+    
+                const simulation = d3.forceSimulation(nodes)
+                    .force("link", d3.forceLink(links).id(d => d.id))
+                    .force("charge", d3.forceManyBody().strength(-400))
+                    .force("center", d3.forceCenter(width / 2, height / 2));
+    
+                const link = svg.append("g")
+                    .selectAll("line")
+                    .data(links)
+                    .join("line")
+                    .attr("stroke", "#999")
+                    .attr("stroke-opacity", 0.6)
+                    .attr("stroke-width", d => Math.sqrt(d.value));
+    
+                const color = d3.scaleOrdinal(d3.schemeCategory10);
+                
+                const node = svg.append("g")
+                    .selectAll("g")
+                    .data(nodes)
+                    .join("g")
+                    .call(drag(simulation));
+    
+                node.append("circle")
+                    .attr("r", d => d.radius)
+                    .attr("fill", d => color(d.group))
+                    .attr("fill-opacity", 0.7);
+    
+                node.append("text")
+                    .text(d => d.id)
+                    .attr("x", 0)
+                    .attr("y", d => d.radius + 12)
+                    .attr("text-anchor", "middle")
+                    .attr("fill", "#333")
+                    .style("font-size", "12px");
+    
+                node.append("title")
+                    .text(d => `${d.id}\nWeight: ${d.weight}`);
+    
+                simulation.on("tick", () => {
+                    link
+                        .attr("x1", d => d.source.x)
+                        .attr("y1", d => d.source.y)
+                        .attr("x2", d => d.target.x)
+                        .attr("y2", d => d.target.y);
+    
+                    node
+                        .attr("transform", d => `translate(${d.x},${d.y})`);
+                });
+    
+                function drag(simulation) {
+                    function dragstarted(event) {
+                        if (!event.active) simulation.alphaTarget(0.3).restart();
+                        event.subject.fx = event.subject.x;
+                        event.subject.fy = event.subject.y;
+                    }
+                    
+                    function dragged(event) {
+                        event.subject.fx = event.x;
+                        event.subject.fy = event.y;
+                    }
+                    
+                    function dragended(event) {
+                        if (!event.active) simulation.alphaTarget(0);
+                        event.subject.fx = null;
+                        event.subject.fy = null;
+                    }
+                    
+                    return d3.drag()
+                        .on("start", dragstarted)
+                        .on("drag", dragged)
+                        .on("end", dragended);
+                    }
+                }, []);
+    
+                return (
+                <div className="w-full h-96 bg-white rounded-lg shadow-lg p-4">
+                    <h3 className="text-lg font-semibold mb-4">Narrative 1: Concept Network</h3>
+                    <svg ref={svgRef} className="w-full h-full"></svg>
+                </div>
+                );
+            };
+    
+            // 3D Visualization Component
+            const ConceptNetwork3D = () => {
+            const canvasRef = useRef();
+    
+            useEffect(() => {
+                const nodes = [
+                    { id: "COCAINE", group: 1, weight: 0.551048, radius: 40, z: 0 },
+                    { id: "SEIZURE", group: 1, weight: 0.364581, radius: 35, z: 50 },
+                    { id: "INVESTIGATION", group: 2, weight: 0.424509, radius: 30, z: -50 },
+                    { id: "QUANTITY", group: 3, weight: 0.383739, radius: 30, z: 25 },
+                    { id: "METHOD", group: 4, weight: 0.344153, radius: 25, z: -25 },
+                    { id: "LOCATION", group: 5, weight: 0.429805, radius: 25, z: 0 },
+                    { id: "tons", group: 3, weight: 0.2, radius: 15, z: 35 },
+                    { id: "kilos", group: 3, weight: 0.2, radius: 15, z: 15 },
+                    { id: "hidden", group: 4, weight: 0.2, radius: 15, z: -35 },
+                    { id: "load", group: 4, weight: 0.2, radius: 15, z: -15 },
+                    { id: "europe", group: 5, weight: 0.2, radius: 15, z: 10 }
+                ];
+    
+                const links = [
+                    { source: "COCAINE", target: "SEIZURE", value: 5 },
+                    { source: "COCAINE", target: "QUANTITY", value: 4 },
+                    { source: "COCAINE", target: "METHOD", value: 3 },
+                    { source: "COCAINE", target: "LOCATION", value: 3 },
+                    { source: "QUANTITY", target: "tons", value: 2 },
+                    { source: "QUANTITY", target: "kilos", value: 2 },
+                    { source: "METHOD", target: "hidden", value: 2 },
+                    { source: "METHOD", target: "load", value: 2 },
+                    { source: "LOCATION", target: "europe", value: 2 }
+                ];
+    
+                const width = 800;
+                const height = 600;
+                const depth = 400;
+    
+                const customZForce = () => {
+                    let nodes;
+                    let strength = 0.1;
+    
+                    function force(alpha) {
+                        nodes.forEach(node => {
+                        const targetZ = node.z || 0;
+                        const dz = targetZ - (node.currentZ || 0);
+                        node.currentZ = (node.currentZ || 0) + dz * strength * alpha;
+                        });
+                    }
+    
+                    force.initialize = (_nodes) => {
+                        nodes = _nodes;
+                        nodes.forEach(node => {
+                        node.currentZ = node.z || 0;
+                        });
+                    };
+    
+                    force.strength = (_) => {
+                        if (!arguments.length) return strength;
+                        strength = _;
+                        return force;
+                    };
+    
+                    return force;
+                };
+    
+                const simulation = d3.forceSimulation(nodes)
+                    .force("link", d3.forceLink(links).id(d => d.id))
+                    .force("charge", d3.forceManyBody().strength(-400))
+                    .force("center", d3.forceCenter(width / 2, height / 2))
+                    .force("custom-z", customZForce());
+    
+                const canvas = d3.select(canvasRef.current)
+                    .attr("width", width)
+                    .attr("height", height);
+                    
+                const context = canvas.node().getContext("2d");
+                const color = d3.scaleOrdinal(d3.schemeCategory10);
+    
+                let angle = 0;
+                function animate() {
+                    context.clearRect(0, 0, width, height);
+                    context.save();
+                    context.translate(width / 2, height / 2);
+                    
+                    angle += 0.002;
+                    const cos = Math.cos(angle);
+                    const sin = Math.sin(angle);
+    
+                    const sortedNodes = [...nodes].sort((a, b) => (b.currentZ || 0) - (a.currentZ || 0));
+    
+                    links.forEach(link => {
+                        const source = link.source;
+                        const target = link.target;
+                        
+                        const sx = source.x * cos - (source.currentZ || 0) * sin;
+                        const sz = (source.currentZ || 0) * cos + source.x * sin;
+                        const tx = target.x * cos - (target.currentZ || 0) * sin;
+                        const tz = (target.currentZ || 0) * cos + target.x * sin;
+                        
+                        context.beginPath();
+                        context.moveTo(sx - width/2, source.y - height/2);
+                        context.lineTo(tx - width/2, target.y - height/2);
+                        context.strokeStyle = `rgba(153, 153, 153, ${0.2 + (sz + tz)/(2 * depth)})`;
+                        context.stroke();
+                    });
+    
+                    sortedNodes.forEach(node => {
+                        const x = node.x * cos - (node.currentZ || 0) * sin;
+                        const z = (node.currentZ || 0) * cos + node.x * sin;
+                        
+                        const scale = 0.5 + (z + depth/2) / depth;
+                        
+                        context.beginPath();
+                        context.arc(
+                        x - width/2, 
+                        node.y - height/2, 
+                        node.radius * scale, 
+                        0, 
+                        2 * Math.PI
+                        );
+                        context.fillStyle = color(node.group);
+                        context.fill();
+                        
+                        context.fillStyle = "#333";
+                        context.font = `${12 * scale}px Arial`;
+                        context.textAlign = "center";
+                        context.fillText(
+                        node.id, 
+                        x - width/2, 
+                        node.y - height/2 + node.radius * scale + 12
+                        );
+                    });
+    
+                    context.restore();
+                    requestAnimationFrame(animate);
+                }
+    
+                animate();
+                    
+                simulation.on("tick", () => {
+                    nodes.forEach(node => {
+                        node.x = Math.max(node.radius, Math.min(width - node.radius, node.x));
+                        node.y = Math.max(node.radius, Math.min(height - node.radius, node.y));
+                        node.currentZ = Math.max(-depth/2, Math.min(depth/2, node.currentZ || 0));
+                    });
+                });
+    
+                return () => {
+                    simulation.stop();
+                };
+            }, []);
+    
+            return (
+                <div className="w-full h-96 bg-white rounded-lg shadow-lg p-4">
+                <h3 className="text-lg font-semibold mb-4">Narrative 1: 3D Concept Network</h3>
+                <canvas ref={canvasRef} className="w-full h-full"></canvas>
+                </div>
+            );
+        };
+    
+            const App = () => {
+                return (
+                    <div className="container">
+                        <h1>Narrative Concept Visualizations</h1>
+                        <div className="viz-container">
+                            <ConceptNetwork2D />
+                        </div>
+                        <div className="viz-container">
+                            <ConceptNetwork3D />
+                        </div>
+                    </div>
+                );
+            };
+    
+            const root = ReactDOM.createRoot(document.getElementById('root'));
+            root.render(<App />);
+    </script>
+</body>
+</html>
+
+
+
+
+
+
+

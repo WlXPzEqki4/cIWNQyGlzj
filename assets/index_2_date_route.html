@@ -1,0 +1,183 @@
+
+
+
+
+
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Daily Route Visualization</title>
+<meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+<link href="https://api.mapbox.com/mapbox-gl-js/v3.8.0/mapbox-gl.css" rel="stylesheet">
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.8.0/mapbox-gl.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+<style>
+body { margin: 0; padding: 0; }
+#map { position: absolute; top: 0; bottom: 0; width: 100%; }
+.map-overlay {
+    font: 12px/20px 'Helvetica Neue', Arial, Helvetica, sans-serif;
+    position: absolute;
+    width: 200px;
+    top: 0;
+    left: 0;
+    padding: 10px;
+}
+.map-overlay .map-overlay-inner {
+    background-color: #fff;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    border-radius: 3px;
+    padding: 10px;
+    margin-bottom: 10px;
+}
+.map-overlay-inner select {
+    width: 100%;
+}
+</style>
+</head>
+<body>
+<div id="map"></div>
+<div class="map-overlay">
+    <div class="map-overlay-inner">
+        <label>Select Date</label>
+        <select id="dateSelect"></select>
+    </div>
+</div>
+
+<script>
+mapboxgl.accessToken = 'pk.eyJ1IjoiamNkZW50b24yMDUxIiwiYSI6ImNtMzVkZXJudTA5ejkya3B5NDU4Z2MyeHQifQ.aUk4eH5k3JC45Foxcbe2qQ';
+
+// Initialize map
+const map = new mapboxgl.Map({
+    container: 'map',
+    style: 'mapbox://styles/mapbox/streets-v12',
+    center: [55.38279, 25.08532], // Centered on your data area
+    zoom: 15
+});
+
+// Load and process CSV data
+async function loadCSV() {
+    const response = await fetch('new_df.csv');
+    const text = await response.text();
+    
+    return new Promise(resolve => {
+        Papa.parse(text, {
+            header: true,
+            complete: function(results) {
+                resolve(results.data);
+            }
+        });
+    });
+}
+
+// Process data and populate dropdown
+async function initializeData() {
+    const data = await loadCSV();
+    
+    // Get unique dates
+    const uniqueDates = [...new Set(data.map(row => row.date))];
+    
+    // Populate dropdown
+    const dateSelect = document.getElementById('dateSelect');
+    uniqueDates.sort().forEach(date => {
+        const option = document.createElement('option');
+        option.value = date;
+        option.text = date;
+        dateSelect.appendChild(option);
+    });
+    
+    // Add change event listener
+    dateSelect.addEventListener('change', () => updateRoute(data, dateSelect.value));
+}
+
+// Update route for selected date
+function updateRoute(data, selectedDate) {
+    // Filter data for selected date and sort by timestamp
+    const dayData = data
+        .filter(row => row.date === selectedDate)
+        .sort((a, b) => {
+            const timeA = new Date(`${a.date} ${a.TIMESTAMP.split(' ')[1]}`);
+            const timeB = new Date(`${b.date} ${b.TIMESTAMP.split(' ')[1]}`);
+            return timeA - timeB;
+        });
+
+    // Create route coordinates
+    const coordinates = dayData.map(row => [parseFloat(row.longitude), parseFloat(row.latitude)]);
+
+    // Update map source and layer
+    if (map.getSource('route')) {
+        map.getSource('route').setData({
+            type: 'Feature',
+            properties: {},
+            geometry: {
+                type: 'LineString',
+                coordinates: coordinates
+            }
+        });
+    } else {
+        map.addSource('route', {
+            type: 'geojson',
+            lineMetrics: true,
+            data: {
+                type: 'Feature',
+                properties: {},
+                geometry: {
+                    type: 'LineString',
+                    coordinates: coordinates
+                }
+            }
+        });
+
+        map.addLayer({
+            id: 'route',
+            type: 'line',
+            source: 'route',
+            layout: {
+                'line-join': 'round',
+                'line-cap': 'round'
+            },
+            paint: {
+                'line-width': 6,
+                'line-gradient': [
+                    'interpolate',
+                    ['linear'],
+                    ['line-progress'],
+                    0, '#FF0000',    // Red for start of day
+                    1, '#0000FF'     // Blue for end of day
+                ]
+            }
+        });
+    }
+
+    // Fit map to route bounds
+    const bounds = coordinates.reduce((bounds, coord) => {
+        return bounds.extend(coord);
+    }, new mapboxgl.LngLatBounds(coordinates[0], coordinates[0]));
+
+    map.fitBounds(bounds, {
+        padding: 50
+    });
+}
+
+// Initialize when map loads
+map.on('load', initializeData);
+</script>
+
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

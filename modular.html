@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Modular Analysis Page</title>
+
+  <!-- External CSS -->
+  <link rel="stylesheet" href="./assets/css/styles.css">
+
+  <!-- Libraries -->
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.0/papaparse.min.js"></script>
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+
+</head>
+<body>
+  <div class="container">
+    <!-- Interactive Table Section -->
+    <div class="section-box">
+      <div class="section-header" id="table-header">
+        <h3>📊 Interactive Article Table</h3>
+        <span id="table-icon">►</span>
+      </div>
+      <div class="section-content" id="table-content">
+        <div style="overflow-x: auto;">
+          <table id="articles-table" class="display nowrap" style="width: 100%;"></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Open Source Articles Section -->
+    <div class="section-box">
+      <div class="section-header" id="articles-header">
+        <h3>🔗 Open Source Articles</h3>
+        <span id="articles-icon">►</span>
+      </div>
+      <div class="section-content" id="open-source-articles"></div>
+    </div>
+
+    <!-- Cleaned Corpus Section -->
+    <div class="section-box">
+      <div class="section-header" id="prose-header">
+        <h3>📄 Cleaned Corpus</h3>
+        <span id="prose-icon">►</span>
+      </div>
+      <div class="section-content" id="cleaned-corpus"></div>
+    </div>
+  </div>
+
+  <!--  Visual Timeline Section -->
+  <div class="section-box">
+    <div class="section-header" id="timeline-header">
+      <h3>📅 Interactive Visual Timeline</h3>
+      <span id="timeline-icon">►</span>
+    </div>
+    <div class="section-content" id="timeline-container">
+      <div class="timeline" id="timeline">
+      </div>
+    </div>
+  </div>
+  
+  <!-- Load Modular JavaScript Files -->
+  <script type="module" src="./assets/modules/shared/articlesTableModule.js"></script>
+  <script type="module" src="./assets/modules/shared/articlesModule.js"></script>
+  <script type="module" src="./assets/modules/shared/proseModule.js"></script>
+  <script type="module" src="./assets/modules/shared/visualTimelineModule.js"></script>
+  <script type="module" src="./assets/modules/shared/fixedTimelineModule.js"></script>
+
+
+  <!-- Expand/Collapse Script -->
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const sections = [
+        { headerId: 'table-header', contentId: 'table-content', iconId: 'table-icon' },
+        { headerId: 'articles-header', contentId: 'open-source-articles', iconId: 'articles-icon' },
+        { headerId: 'prose-header', contentId: 'cleaned-corpus', iconId: 'prose-icon' },
+        { headerId: 'timeline-header', contentId: 'timeline-container', iconId: 'timeline-icon' }
+      ];
+
+      sections.forEach(section => {
+        const header = document.getElementById(section.headerId);
+        const content = document.getElementById(section.contentId);
+        const icon = document.getElementById(section.iconId);
+
+        header.addEventListener('click', () => {
+          content.classList.toggle('show');
+          icon.textContent = content.classList.contains('show') ? '▼' : '►';
+        });
+      });
+    });
+  </script>
+</body>
+</html>
+
+
+
+
+

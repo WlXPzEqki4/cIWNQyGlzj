@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>3D Scatter Plot with Links</title>
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    body {
+      margin: 0;
+    }
+    #plot {
+      width: 100%;
+      height: 100vh;
+    }
+  </style>
+</head>
+<body>
+  <div id="plot"></div>
+  <script>
+    const nodes = [
+      { id: "COCAINE", group: 1, weight: 0.551048, radius: 40 },
+      { id: "SEIZURE", group: 1, weight: 0.364581, radius: 35 },
+      { id: "INVESTIGATION", group: 2, weight: 0.424509, radius: 30 },
+      { id: "QUANTITY", group: 3, weight: 0.383739, radius: 30 },
+      { id: "METHOD", group: 4, weight: 0.344153, radius: 25 },
+      { id: "LOCATION", group: 5, weight: 0.429805, radius: 25 },
+      { id: "tons", group: 3, weight: 0.2, radius: 15 },
+      { id: "kilos", group: 3, weight: 0.2, radius: 15 },
+      { id: "hidden", group: 4, weight: 0.2, radius: 15 },
+      { id: "load", group: 4, weight: 0.2, radius: 15 },
+      { id: "europe", group: 5, weight: 0.2, radius: 15 }
+    ];
+
+    const links = [
+      { source: "COCAINE", target: "SEIZURE" },
+      { source: "COCAINE", target: "QUANTITY" },
+      { source: "COCAINE", target: "METHOD" },
+      { source: "COCAINE", target: "LOCATION" },
+      { source: "QUANTITY", target: "tons" },
+      { source: "QUANTITY", target: "kilos" },
+      { source: "METHOD", target: "hidden" },
+      { source: "METHOD", target: "load" },
+      { source: "LOCATION", target: "europe" }
+    ];
+
+    // Initialize force simulation for 3D layout
+    function calculateForceDirectedPositions(nodes, links) {
+      const simulation = d3.forceSimulation(nodes)
+        .force("link", d3.forceLink(links).id(d => d.id).distance(50))
+        .force("charge", d3.forceManyBody().strength(-50))
+        .force("center", d3.forceCenter(0, 0))
+        .stop();
+
+      // Run simulation for a few iterations
+      for (let i = 0; i < 300; ++i) simulation.tick();
+
+      nodes.forEach(node => {
+        node.x = node.x || 0;
+        node.y = node.y || 0;
+        node.z = node.z || (Math.random() * 100 - 50); // Random Z for 3D
+      });
+
+      return nodes;
+    }
+
+    const updatedNodes = calculateForceDirectedPositions(nodes, links.map(link => {
+      return {
+        source: link.source,
+        target: link.target
+      };
+    }));
+
+    // Extract node positions
+    const x = updatedNodes.map(node => node.x);
+    const y = updatedNodes.map(node => node.y);
+    const z = updatedNodes.map(node => node.z);
+    const text = updatedNodes.map(node => node.id);
+
+    // Create scatter points
+    const scatterData = {
+      type: 'scatter3d',
+      mode: 'markers+text',
+      x: x,
+      y: y,
+      z: z,
+      text: text,
+      textposition: 'top center',
+      marker: {
+        size: updatedNodes.map(node => node.radius),
+        color: updatedNodes.map(node => node.group),
+        opacity: 0.8
+      },
+      showlegend: false
+    };
+
+    // Create links (lines)
+    const lineData = links.flatMap(link => {
+      const sourceNode = updatedNodes.find(node => node.id === link.source);
+      const targetNode = updatedNodes.find(node => node.id === link.target);
+
+      return {
+        x: [sourceNode.x, targetNode.x, null],
+        y: [sourceNode.y, targetNode.y, null],
+        z: [sourceNode.z, targetNode.z, null],
+        type: 'scatter3d',
+        mode: 'lines',
+        line: {
+          width: 2,
+          color: 'gray'
+        },
+        showlegend: false
+      };
+    });
+
+    const data = [scatterData, ...lineData];
+
+    const layout = {
+      margin: { l: 0, r: 0, b: 0, t: 0 },
+      scene: {
+        xaxis: { title: 'X' },
+        yaxis: { title: 'Y' },
+        zaxis: { title: 'Z' }
+      },
+      showlegend: false
+    };
+
+    Plotly.newPlot('plot', data, layout);
+
+    // Alternative layouts:
+    // Uncomment the radial layout method below to switch:
+    // function calculateRadialPositions(...)
+    // const updatedNodes = calculateRadialPositions(nodes, "COCAINE");
+  </script>
+</body>
+</html>

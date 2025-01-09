@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Article Patterns Analysis</title>
+    
+    <!-- React Dependencies -->
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.development.js"></script>
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.development.js"></script>
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/prop-types/15.8.1/prop-types.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/recharts/2.10.3/Recharts.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            padding: 20px;
+            background: #f5f5f5;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1, h2, h3 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 40px;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .chart-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 40px;
+            min-height: 400px;
+        }
+
+        .patterns-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .pattern-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .pattern-title {
+            font-weight: bold;
+            color: #ff4646;
+            margin-bottom: 10px;
+        }
+
+        .pattern-value {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .pattern-description {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        @media (max-width: 768px) {
+            .patterns-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+
+<body>
+
+
+<div class="container">
+    <h1>Article Patterns & Story Evolution</h1>
+
+    <!-- Article Patterns Overview -->
+    <div class="patterns-grid">
+        <div class="pattern-card">
+            <div class="pattern-title">Dominant Narrative</div>
+            <div class="pattern-value">Narrative 1</div>
+            <div class="pattern-description">Most prevalent narrative thread</div>
+        </div>
+        <div class="pattern-card">
+            <div class="pattern-title">Peak Coverage</div>
+            <div class="pattern-value">April 2024</div>
+            <div class="pattern-description">Month with highest narrative activity</div>
+        </div>
+        <div class="pattern-card">
+            <div class="pattern-title">Active Narratives</div>
+            <div class="pattern-value">5</div>
+            <div class="pattern-description">Distinct narrative threads identified</div>
+        </div>
+    </div>
+
+    <div id="root"></div>
+</div>
+
+    <script type="text/babel">
+        const {
+            AreaChart, Area, LineChart, Line, XAxis, YAxis,
+            CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+            BarChart, Bar, Cell, LabelList
+        } = window.Recharts;
+
+        const NarrativeFlow = () => {
+            const timeseriesData = [
+                { 
+                    date: '2022-03',
+                    narrative1: 100,
+                    narrative2: 0,
+                    narrative3: 0,
+                    narrative4: 0,
+                    narrative5: 0,
+                    sentiment: 0.2,
+                    topicStrength: 45,
+                },
+                { 
+                    date: '2022-06',
+                    narrative1: 60,
+                    narrative2: 100,
+                    narrative3: 20,
+                    narrative4: 0,
+                    narrative5: 0,
+                    sentiment: -0.3,
+                    topicStrength: 65,
+                },
+                { 
+                    date: '2022-09',
+                    narrative1: 40,
+                    narrative2: 70,
+                    narrative3: 100,
+                    narrative4: 0,
+                    narrative5: 0,
+                    sentiment: -0.5,
+                    topicStrength: 85,
+                },
+                { 
+                    date: '2023-03',
+                    narrative1: 20,
+                    narrative2: 40,
+                    narrative3: 60,
+                    narrative4: 100,
+                    narrative5: 0,
+                    sentiment: 0.1,
+                    topicStrength: 95,
+                },
+                { 
+                    date: '2023-09',
+                    narrative1: 10,
+                    narrative2: 30,
+                    narrative3: 40,
+                    narrative4: 80,
+                    narrative5: 20,
+                    sentiment: 0.4,
+                    topicStrength: 75,
+                },
+                { 
+                    date: '2024-05',
+                    narrative1: 20,
+                    narrative2: 20,
+                    narrative3: 30,
+                    narrative4: 40,
+                    narrative5: 100,
+                    sentiment: 0.3,
+                    topicStrength: 60,
+                }
+            ];
+
+            const narrativeColors = {
+                narrative1: "#ff4646",
+                narrative2: "#4666ff",
+                narrative3: "#46af46",
+                narrative4: "#9146ff",
+                narrative5: "#ff8c46"
+            };
+
+            const indicatorsData = [
+                // Narrative 1
+                { indicator: "tons cocaine", weight: 0.551048, narrative: "narrative1" },
+                { indicator: "cocaine europe", weight: 0.429805, narrative: "narrative1" },
+                { indicator: "investigation", weight: 0.424509, narrative: "narrative1" },
+                { indicator: "kilos cocaine", weight: 0.383739, narrative: "narrative1" },
+                { indicator: "cocaine seized", weight: 0.364581, narrative: "narrative1" },
+                { indicator: "cocaine hidden", weight: 0.344153, narrative: "narrative1" },
+                { indicator: "seizures", weight: 0.252899, narrative: "narrative1" },
+                { indicator: "alleged cocaine", weight: 0.206691, narrative: "narrative1" },
+                { indicator: "load cocaine", weight: 0.173851, narrative: "narrative1" },
+                { indicator: "seizure", weight: 0.16595, narrative: "narrative1" },
+
+                // Narrative 2
+                { indicator: "arrest", weight: 0.622218, narrative: "narrative2" },
+                { indicator: "arrested", weight: 0.522979, narrative: "narrative2" },
+                { indicator: "international arrest", weight: 0.442146, narrative: "narrative2" },
+                { indicator: "arrest warrant", weight: 0.431221, narrative: "narrative2" },
+                { indicator: "tez arrested", weight: 0.27383, narrative: "narrative2" },
+                { indicator: "arrest judge", weight: 0.161944, narrative: "narrative2" },
+                { indicator: "arrested june", weight: 0.161944, narrative: "narrative2" },
+                { indicator: "learning arrest", weight: 0.161944, narrative: "narrative2" },
+                { indicator: "arrested year", weight: 0.160843, narrative: "narrative2" },
+                { indicator: "arrested carrying", weight: 0.153874, narrative: "narrative2" },
+
+                // Narrative 3
+                { indicator: "extradition", weight: 1.040092, narrative: "narrative3" },
+                { indicator: "extradition request", weight: 0.493924, narrative: "narrative3" },
+                { indicator: "extradition paraguay", weight: 0.343318, narrative: "narrative3" },
+                { indicator: "request extradition", weight: 0.336582, narrative: "narrative3" },
+                { indicator: "confirmed extradition", weight: 0.225154, narrative: "narrative3" },
+                { indicator: "extradition according", weight: 0.1996, narrative: "narrative3" },
+                { indicator: "extradition sports", weight: 0.18356, narrative: "narrative3" },
+                { indicator: "ordered extradition", weight: 0.154994, narrative: "narrative3" },
+                { indicator: "extradition compatriot", weight: 0.133981, narrative: "narrative3" },
+                { indicator: "regulations extradition", weight: 0.133981, narrative: "narrative3" },
+
+                // Narrative 5
+                { indicator: "charges", weight: 0.241108, narrative: "narrative5" },
+                { indicator: "charges alleged", weight: 0.101531, narrative: "narrative5" },
+                { indicator: "charges paraguay", weight: 0.080022, narrative: "narrative5" },
+                { indicator: "faces charges", weight: 0.080022, narrative: "narrative5" },
+                { indicator: "face charges", weight: 0.076242, narrative: "narrative5" },
+                { indicator: "charges national", weight: 0.0724, narrative: "narrative5" },
+                { indicator: "copies charges", weight: 0.0724, narrative: "narrative5" },
+                { indicator: "charges mega", weight: 0.0515, narrative: "narrative5" },
+                { indicator: "sharing charges", weight: 0.0515, narrative: "narrative5" },
+                { indicator: "brought charges", weight: 0.039263, narrative: "narrative5" }
+            ];
+
+            return (
+                <>
+                    <h2>Narrative Evolution Over Time</h2>
+                    <div className="chart-container">
+                        <div style={{ height: '400px' }}>
+                            <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart data={timeseriesData}>
+                                    <defs>
+                                        {Object.entries(narrativeColors).map(([key, color]) => (
+                                            <linearGradient key={key} id={key} x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor={color} stopOpacity={0.8}/>
+                                                <stop offset="95%" stopColor={color} stopOpacity={0.2}/>
+                                            </linearGradient>
+                                        ))}
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" />
+                                    <XAxis dataKey="date" />
+                                    <YAxis />
+                                    <Tooltip />
+                                    <Legend />
+                                    {Object.entries(narrativeColors).map(([key, color]) => (
+                                        <Area 
+                                            key={key}
+                                            type="monotone" 
+                                            dataKey={key} 
+                                            stroke={color} 
+                                            fillOpacity={1} 
+                                            fill={`url(#${key})`} 
+                                            name={`Phase ${key.slice(-1)}: ${
+                                                key === 'narrative1' ? 'Initial Crime & Investigation' :
+                                                key === 'narrative2' ? 'Arrest & Initial Proceedings' :
+                                                key === 'narrative3' ? 'Extradition Process' :
+                                                key === 'narrative4' ? 'Legal Complications' :
+                                                'Resolution & Final Charges'
+                                            }`}
+                                        />
+                                    ))}
+                                </AreaChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+
+                    <h2>Sentiment and Topic Strength</h2>
+                    <div className="chart-container">
+                        <div style={{ height: '400px' }}>
+                            <ResponsiveContainer width="100%" height="100%">
+                                <LineChart data={timeseriesData}>
+                                    <CartesianGrid strokeDasharray="3 3" />
+                                    <XAxis dataKey="date" />
+                                    <YAxis yAxisId="left" />
+                                    <YAxis yAxisId="right" orientation="right" />
+                                    <Tooltip />
+                                    <Legend />
+                                    <Line 
+                                        yAxisId="left"
+                                        type="monotone" 
+                                        dataKey="sentiment" 
+                                        stroke="#ff4646" 
+                                        name="Sentiment"
+                                        dot={{ stroke: '#ff4646', strokeWidth: 2, r: 4 }}
+                                    />
+                                    <Line 
+                                        yAxisId="right"
+                                        type="monotone" 
+                                        dataKey="topicStrength" 
+                                        stroke="#666666" 
+                                        name="Topic Strength"
+                                        dot={{ stroke: '#666666', strokeWidth: 2, r: 4 }}
+                                    />
+                                </LineChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+
+                    <h2>Narrative Indicators & Weights</h2>
+                    <div className="chart-container" style={{ height: '1600px' }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart 
+                                layout="vertical" 
+                                data={indicatorsData}
+                                margin={{ top: 20, right: 20, left: 1, bottom: 20 }}
+                            >
+                                <CartesianGrid strokeDasharray="3 3" />
+                                <XAxis 
+                                    type="number" 
+                                    domain={[0, 1.2]} 
+                                    tickFormatter={value => value.toFixed(2)}
+                                />
+                                <YAxis 
+                                    dataKey="indicator" 
+                                    type="category" 
+                                    width={180}
+                                />
+                                <Tooltip 
+                                    formatter={(value) => [value.toFixed(3), "Weight"]}
+                                />
+                                <Bar dataKey="weight" name="Weight">
+                                    <LabelList 
+                                        dataKey="weight" 
+                                        position="right" 
+                                        formatter={value => value.toFixed(3)}
+                                    />
+                                    {indicatorsData.map((entry, index) => (
+                                        <Cell 
+                                            key={`cell-${index}`} 
+                                            fill={narrativeColors[entry.narrative]} 
+                                        />
+                                    ))}
+                                </Bar>
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+                </>
+            );
+        };
+
+        // Render the app
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<NarrativeFlow />);
+    </script>
+</body>
+</html>

@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Narrative Clusters Exploration - Enhanced Visualisations</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            margin: 20px;
+            background: #f5f5f5;
+            color: #333;
+        }
+
+        h1, h2, h3 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 40px;
+            padding: 20px;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        p.intro {
+            max-width: 800px;
+            margin: 0 auto;
+            margin-bottom: 40px;
+            text-align: center;
+            font-size: 1.1em;
+            color: #555;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+
+
+
+/* .month-marker::after {
+    content: '';
+    display: block;
+    width: 2px;
+    height: 12px;
+    background: #444;
+    margin: 6px auto 0;
+    border-radius: 1px;
+}
+
+
+.event-marker.active .vertical-line {
+    height: 60px;
+}
+ */
+
+
+
+
+ 
+/* Timeline container with glassmorphism effect */
+.timeline-container {
+    margin: 60px 0;
+    overflow-x: auto;
+    overflow-y: visible;
+    padding: 40px;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 24px;
+    box-shadow: 
+        0 8px 32px rgba(31, 38, 135, 0.15),
+        0 4px 8px rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+/* Timeline scale area with smoother spacing */
+.timeline-scale {
+    position: relative;
+    min-width: 1200px;
+    height: 760px;
+    padding: 20px 0;
+}
+
+/* Year markers with floating effect */
+.year-marker {
+    position: absolute;
+    transform: translateX(-50%);
+    top: 20px;
+    font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 1.1em;
+    font-weight: 600;
+    color: #1a1a1a;
+    background: linear-gradient(135deg, rgba(255,255,255,0.9), rgba(255,255,255,0.4));
+    padding: 12px 24px;
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    box-shadow: 
+        0 4px 12px rgba(0,0,0,0.1),
+        0 2px 4px rgba(0,0,0,0.05);
+    backdrop-filter: blur(4px);
+}
+
+/* Month markers with subtle design */
+.month-marker {
+    position: absolute;
+    transform: translateX(-50%);
+    top: 80px;
+    font-size: 0.9em;
+    font-weight: 500;
+    color: #666;
+    background: rgba(255,255,255,0.8);
+    padding: 8px 16px;
+    border-radius: 12px;
+    border: 1px solid rgba(200,200,200,0.3);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+/* Modernized timeline line */
+.timeline-line {
+    position: absolute;
+    top: 180px;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background: linear-gradient(90deg, 
+        rgba(74,144,226,0.2) 0%,
+        rgba(74,144,226,0.7) 50%,
+        rgba(74,144,226,0.2) 100%);
+    border-radius: 3px;
+    box-shadow: 
+        0 0 10px rgba(74,144,226,0.2),
+        0 0 20px rgba(74,144,226,0.1);
+}
+
+/* Event markers with modern design */
+.event-marker {
+    position: absolute;
+    top: 160px;
+    transform: translateX(-50%);
+    cursor: pointer;
+    z-index: 1;
+}
+
+/* Redesigned event dots */
+.event-dot {
+    width: 48px;
+    height: 48px;
+    background: linear-gradient(135deg, #6366F1, #4F46E5);
+    border-radius: 24px;
+    border: 2px solid #fff;
+    box-shadow: 
+        0 4px 12px rgba(99,102,241,0.3),
+        0 2px 4px rgba(0,0,0,0.1);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 1.1em;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.event-dot:hover {
+    transform: translateY(-4px) scale(1.05);
+    box-shadow: 
+        0 8px 20px rgba(99,102,241,0.4),
+        0 4px 8px rgba(0,0,0,0.1);
+    background: linear-gradient(135deg, #4F46E5, #4338CA);
+}
+
+/* Enhanced event info box */
+.event-info {
+    position: absolute;
+    top: 80px;
+    left: 50%;
+    transform: translateX(-50%) translateY(10px) scale(0.95);
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Vertical connecting line */
+.vertical-line {
+    width: 2px;
+    height: 60px;
+    background: linear-gradient(180deg, #6366F1, rgba(99,102,241,0.2));
+    margin: 0 auto;
+    border-radius: 1px;
+}
+
+/* Info box with modern design */
+.info-box {
+    background: rgba(255,255,255,0.98);
+    border-radius: 20px;
+    border: 1px solid rgba(99,102,241,0.2);
+    padding: 24px;
+    margin-top: 16px;
+    box-shadow: 
+        0 20px 40px rgba(0,0,0,0.1),
+        0 10px 20px rgba(0,0,0,0.05);
+    backdrop-filter: blur(8px);
+    max-width: 900px;
+    min-width: 320px;
+}
+
+.info-box h3 {
+    margin: 0 0 16px 0;
+    font-size: 1.2em;
+    font-weight: 600;
+    color: #1a1a1a;
+    padding-bottom: 12px;
+    border-bottom: 2px solid rgba(99,102,241,0.1);
+}
+
+.info-box ul {
+    margin: 0;
+    padding: 0 0 0 20px;
+}
+
+.info-box li {
+    color: #4a5568;
+    margin-bottom: 8px;
+    line-height: 1.6;
+    font-size: 0.95em;
+}
+
+/* Active state animations */
+.event-marker.active .event-info {
+    transform: translateX(-50%) translateY(0) scale(1);
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.event-marker.active .event-dot {
+    background: linear-gradient(135deg, #4338CA, #312E81);
+    box-shadow: 
+        0 0 0 4px rgba(99,102,241,0.2),
+        0 8px 20px rgba(99,102,241,0.4);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .timeline-container {
+        padding: 20px;
+        border-radius: 16px;
+    }
+    
+    .event-dot {
+        width: 40px;
+        height: 40px;
+        font-size: 1em;
+    }
+    
+    .info-box {
+        padding: 16px;
+        margin-top: 12px;
+    }
+}
+
+
+
+
+
+
+
+/* Conceptual map (unchanged) */
+.concept-map {
+    background: #fff;
+    padding: 40px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    position: relative;
+    text-align: center;
+}
+
+.map-scroll-container {
+    overflow-x: auto;
+    margin: 40px 0;
+    padding-bottom: 20px;
+}
+
+.map-track {
+    display: inline-flex;
+    align-items: center;
+    position: relative;
+    white-space: nowrap;
+}
+
+.map-node-wrapper {
+    display: inline-flex;
+    align-items: center;
+    position: relative;
+}
+
+.map-node {
+    display: inline-block;
+    background: #ff4646;
+    color: #fff;
+    padding: 15px 20px;
+    border-radius: 4px;
+    font-size: 0.95em;
+    font-weight: bold;
+    cursor: pointer;
+    margin: 0 20px;
+    white-space: normal;
+    text-align: left;
+    transition: background 0.3s ease;
+    max-width: 200px;
+}
+
+.map-node:hover {
+    background: #e33c3c;
+}
+
+.map-node-title {
+    margin-bottom: 5px;
+    font-size: 1.1em;
+}
+
+.map-node-summary {
+    font-size: 0.9em;
+    opacity: 0.9;
+}
+
+.map-connector {
+    display: inline-block;
+    vertical-align: middle;
+    margin: 0;
+    padding: 0;
+}
+
+.node-details {
+    display: none;
+    text-align: left;
+    max-width: 800px;
+    margin: 40px auto 0 auto;
+    background: #f9f9f9;
+    padding: 20px;
+    border-radius: 8px;
+    border: 1px solid #ddd;
+}
+
+.node-details.active {
+    display: block;
+}
+
+/* Clusters (unchanged) */
+.cluster-container {
+    margin-bottom: 60px;
+}
+
+.expandable-cluster {
+    cursor: pointer;
+    margin-bottom: 10px;
+    transition: transform 0.2s;
+    background: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.expandable-cluster:hover {
+    transform: translateX(10px);
+}
+
+.cluster-title {
+    font-weight: bold;
+    margin-bottom: 10px;
+    font-size: 1.2em;
+    color: #ff4646;
+}
+
+.cluster-period {
+    font-size: 0.9em;
+    color: #999;
+    margin-bottom: 20px;
+}
+
+.cluster-description {
+    margin-bottom: 20px;
+    color: #555;
+}
+
+.cluster-articles {
+    background: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    display: none;
+}
+
+.cluster-article-title {
+    font-weight: bold;
+    margin-bottom: 5px;
+    color: #333;
+}
+
+.cluster-article-meta {
+    font-size: 0.8em;
+    color: #999;
+    margin-bottom: 10px;
+}
+
+.cluster-article-summary {
+    font-size: 0.9em;
+    color: #555;
+}
+
+.collapse-button {
+    cursor: pointer;
+    color: #ff4646;
+    font-size: 0.9em;
+    display: inline-block;
+    margin-top: 10px;
+}
+
+@media (max-width: 768px) {
+    .timeline-item {
+        margin: 0 20px;
+    }
+}
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Narrative Clusters Exploration</h1>
+        <h2>Diego Benítez Case: Enhanced Visualisations</h2>
+        <p class="intro">
+            Here we present a refined approach to visualising the evolving narrative of the Diego Benítez case.  
+            Through a more spacious timeline, conceptual maps, and a Sankey-style diagram, we aim to illustrate  
+            the complexity and progression of the story across multiple clusters and themes.
+        </p>
+
+        <h2>Enhanced Timeline Visualisation</h2>
+        <p class="intro">
+            The timeline below highlights major events across the covered years.  
+            The top scale shows years and approximate months, allowing you to see  
+            when key milestones occurred. Click on any event marker to reveal a detail box below it.
+        </p>
+        
+        <div class="timeline-container">
+            <div class="timeline-scale">
+                <!-- Year and month markers -->
+                <div class="year-marker" style="left: 5%;">2022</div>
+                <div class="year-marker" style="left: 40%;">2023</div>
+                <div class="year-marker" style="left: 75%;">2024</div>
+        
+                <!-- Month guide (approximate) -->
+                <div class="month-marker" style="left: 10%;">Mar 2022</div>
+                <div class="month-marker" style="left: 20%;">Jun 2022</div>
+                <div class="month-marker" style="left: 30%;">Sep 2022</div>
+                <div class="month-marker" style="left: 45%;">Mar 2023</div>
+                <div class="month-marker" style="left: 60%;">Jul 2023</div>
+                <div class="month-marker" style="left: 80%;">2024</div>
+        
+                <!-- Timeline line -->
+                <div class="timeline-line"></div>
+        
+                <!-- Event markers with inline info -->
+                <div class="event-marker" style="left: 10%;" data-event="event1">
+                    <div class="event-dot">I</div>
+                    <div class="event-info">
+                        <div class="vertical-line"></div>
+                        <div class="info-box">
+                            <h3>Initial Crime &amp; Investigation (Mar 2022)</h3>
+                            <ul>
+                                <li>Over 16 tonnes of cocaine seized in Germany.</li>
+                                <li>Initial links to businessman Diego Benítez uncovered.</li>
+                                <li>Law enforcement agencies across Europe coordinate investigation.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+        
+                <div class="event-marker" style="left: 20%;" data-event="event2">
+                    <div class="event-dot">A</div>
+                    <div class="event-info">
+                        <div class="vertical-line"></div>
+                        <div class="info-box">
+                            <h3>Arrest &amp; Initial Proceedings (Jun 2022)</h3>
+                            <ul>
+                                <li>Diego Benítez arrested in the UAE.</li>
+                                <li>Preliminary hearings on extradition routes commence.</li>
+                                <li>Early cooperation established among prosecuting nations.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+        
+                <div class="event-marker" style="left: 30%;" data-event="event3">
+                    <div class="event-dot">E</div>
+                    <div class="event-info">
+                        <div class="vertical-line"></div>
+                        <div class="info-box">
+                            <h3>Extradition Process (Jul - Dec 2022)</h3>
+                            <ul>
+                                <li>Multiple countries file competing extradition requests.</li>
+                                <li>Asset seizures linked to alleged criminal networks.</li>
+                                <li>Negotiations stall due to jurisdictional complexities.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+        
+                <div class="event-marker" style="left: 45%;" data-event="event4">
+                    <div class="event-dot">L</div>
+                    <div class="event-info">
+                        <div class="vertical-line"></div>
+                        <div class="info-box">
+                            <h3>Legal Complications (2023)</h3>
+                            <ul>
+                                <li>Judicial reviews and cross-border appeals intensify.</li>
+                                <li>Conflicting legal interpretations cause delays.</li>
+                                <li>New evidence shifts strategic priorities.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+        
+                <div class="event-marker" style="left: 75%;" data-event="event5">
+                    <div class="event-dot">R</div>
+                    <div class="event-info">
+                        <div class="vertical-line"></div>
+                        <div class="info-box">
+                            <h3>Resolution &amp; Charges (2024)</h3>
+                            <ul>
+                                <li>Final extradition feasibility confirmed by international tribunals.</li>
+                                <li>Conclusive charges refined, preparing for trial and sentencing.</li>
+                                <li>A complex international chapter moves toward closure.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+
+        <!-- Conceptual Map of Narrative Clusters -->
+        <h2>Conceptual Map of Narrative Clusters</h2>
+        <p class="intro">
+            This conceptual map demonstrates how the story transitions across different thematic clusters.  
+            Each card represents a key narrative phase, linked by subtle connectors.  
+            Click on any cluster to reveal more detailed context beneath it.
+        </p>
+        
+        <div class="concept-map">
+            <div class="map-scroll-container">
+                <div class="map-track">
+                    
+                    <!-- Node 1 -->
+                    <div class="map-node-wrapper">
+                        <div class="map-node" data-node="node1">
+                            <div class="map-node-title">Initial Crime &amp; Investigation</div>
+                            <div class="map-node-summary">Discovery of massive cocaine consignment in Germany.</div>
+                        </div>
+                        <div class="map-connector">
+                            <svg width="100" height="20">
+                                <line x1="0" y1="10" x2="100" y2="10" stroke="#ccc" stroke-width="2" />
+                            </svg>
+                        </div>
+                    </div>
+        
+                    <!-- Node 2 -->
+                    <div class="map-node-wrapper">
+                        <div class="map-node" data-node="node2">
+                            <div class="map-node-title">Arrest &amp; Initial Proceedings</div>
+                            <div class="map-node-summary">Suspect apprehended in the UAE, starting extradition talks.</div>
+                        </div>
+                        <div class="map-connector">
+                            <svg width="100" height="20">
+                                <line x1="0" y1="10" x2="100" y2="10" stroke="#ccc" stroke-width="2" />
+                            </svg>
+                        </div>
+                    </div>
+        
+                    <!-- Node 3 -->
+                    <div class="map-node-wrapper">
+                        <div class="map-node" data-node="node3">
+                            <div class="map-node-title">Extradition Process</div>
+                            <div class="map-node-summary">Complex negotiations and asset seizures among multiple countries.</div>
+                        </div>
+                        <div class="map-connector">
+                            <svg width="100" height="20">
+                                <line x1="0" y1="10" x2="100" y2="10" stroke="#ccc" stroke-width="2" />
+                            </svg>
+                        </div>
+                    </div>
+        
+                    <!-- Node 4 -->
+                    <div class="map-node-wrapper">
+                        <div class="map-node" data-node="node4">
+                            <div class="map-node-title">Legal Complications</div>
+                            <div class="map-node-summary">Judicial reviews, cross-border appeals, and emerging evidence.</div>
+                        </div>
+                        <div class="map-connector">
+                            <svg width="100" height="20">
+                                <line x1="0" y1="10" x2="100" y2="10" stroke="#ccc" stroke-width="2" />
+                            </svg>
+                        </div>
+                    </div>
+        
+                    <!-- Node 5 -->
+                    <div class="map-node-wrapper">
+                        <div class="map-node" data-node="node5">
+                            <div class="map-node-title">Resolution &amp; Charges</div>
+                            <div class="map-node-summary">Final agreements, extradition feasibility, and conclusive sentencing.</div>
+                        </div>
+                        <!-- Last node doesn't need a connector -->
+                    </div>
+                </div>
+            </div>
+        
+            <!-- Detailed descriptions appear below when a node is clicked -->
+            <div class="node-details" id="node1-details">
+                <h3>Initial Crime &amp; Investigation - Details</h3>
+                <p>
+                    In March 2022, authorities in Germany uncovered over 16 tonnes of cocaine concealed in shipping containers.  
+                    Early reports linked the contraband to Diego Benítez, a businessman operating through complex networks.  
+                    This discovery set off an international investigation, prompting law enforcement agencies across Europe and beyond  
+                    to gather intelligence, trace financial flows, and prepare the groundwork for subsequent arrests.
+                </p>
+            </div>
+        
+            <div class="node-details" id="node2-details">
+                <h3>Arrest &amp; Initial Proceedings - Details</h3>
+                <p>
+                    By June 2022, Benítez was apprehended in the UAE. His capture, facilitated by Interpol notices and joint operations,  
+                    immediately sparked diplomatic negotiations. While preliminary hearings addressed basic charges, the focus shifted  
+                    to extradition possibilities. Simultaneously, evidence-sharing procedures began among the requesting nations.
+                </p>
+            </div>
+        
+            <div class="node-details" id="node3-details">
+                <h3>Extradition Process - Details</h3>
+                <p>
+                    From July to December 2022, multiple jurisdictions, including Germany, Paraguay, and Spain, filed competing requests  
+                    for extradition. Assets allegedly tied to Benítez’s operations were frozen, and legal teams navigated a tangle  
+                    of international agreements. The resulting stalemate highlighted the challenges of transnational crime prosecution.
+                </p>
+            </div>
+        
+            <div class="node-details" id="node4-details">
+                <h3>Legal Complications - Details</h3>
+                <p>
+                    Throughout 2023, courts around Europe and beyond reviewed the case repeatedly. Conflicting legal interpretations,  
+                    new evidence, and parallel appeals created a multilayered legal tapestry. Delays mounted as no single jurisdiction  
+                    could unilaterally determine the outcome. This period saw strategic manoeuvring from defence and prosecution alike.
+                </p>
+            </div>
+        
+            <div class="node-details" id="node5-details">
+                <h3>Resolution &amp; Charges - Details</h3>
+                <p>
+                    By 2024, international tribunals and national courts reached partial agreements, paving the way for a feasible  
+                    extradition path. As charges were refined and finalised, the narrative drew closer to resolution. Ultimately,  
+                    authorities agreed on a framework for trial and sentencing, concluding a saga marked by global cooperation and complexity.
+                </p>
+            </div>
+        </div>
+        
+
+        <!-- Narrative Clusters -->
+        <h2>Narrative Clusters</h2>
+
+        <div class="cluster-container">
+
+            <div class="expandable-cluster">
+                <div class="cluster-title">Initial Crime &amp; Investigation</div>
+                <div class="cluster-period">March 2022</div>
+                <div class="cluster-description">
+                    The story begins with the discovery of a massive consignment of cocaine in Germany, allegedly linked to businessman Diego Benítez.
+                </div>
+                <div class="cluster-articles">
+                    <div class="cluster-article">
+                        <div class="cluster-article-title">Businessman charged for mega-consignment</div>
+                        <div class="cluster-article-meta">Date: 17-Mar-22 | Source: UltimaHora</div>
+                        <div class="cluster-article-summary">
+                            Diego Isaac Benítez CAÑETE is charged with trafficking over 16 tonnes of cocaine seized in Germany.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        
+            <div class="expandable-cluster">
+                <div class="cluster-title">Arrest &amp; Initial Proceedings</div>
+                <div class="cluster-period">June 2022</div>
+                <div class="cluster-description">
+                    Following the initial discovery, Diego Benítez is arrested in the UAE. Early extradition negotiations begin, setting the stage for a complex international legal battle.
+                </div>
+                <div class="cluster-articles">
+                    <div class="cluster-article">
+                        <div class="cluster-article-title">Suspect apprehended in the UAE</div>
+                        <div class="cluster-article-meta">Date: 05-Jun-22 | Source: ElPaís</div>
+                        <div class="cluster-article-summary">
+                            Authorities confirm the arrest of Diego Benítez in Dubai, initiating discussions on extradition routes.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        
+            <div class="expandable-cluster">
+                <div class="cluster-title">Extradition Process</div>
+                <div class="cluster-period">July - Dec 2022</div>
+                <div class="cluster-description">
+                    Multiple countries file extradition requests. Asset seizures and legal manoeuvres complicate a straightforward transfer. Disagreements among jurisdictions slow the process.
+                </div>
+                <div class="cluster-articles">
+                    <div class="cluster-article">
+                        <div class="cluster-article-title">Extradition hurdles mount</div>
+                        <div class="cluster-article-meta">Date: 22-Sep-22 | Source: Süddeutsche Zeitung</div>
+                        <div class="cluster-article-summary">
+                            German, Spanish, and Paraguayan authorities clash over extradition priorities, as seized assets spark negotiations.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        
+            <div class="expandable-cluster">
+                <div class="cluster-title">Legal Complications</div>
+                <div class="cluster-period">2023</div>
+                <div class="cluster-description">
+                    A series of confirmations, judicial reviews, and cross-border appeals intensify. Conflicting legal interpretations delay final decisions, while new evidence surfaces.
+                </div>
+                <div class="cluster-articles">
+                    <div class="cluster-article">
+                        <div class="cluster-article-title">Court confirmations and delays</div>
+                        <div class="cluster-article-meta">Date: 15-Mar-23 | Source: Le Monde</div>
+                        <div class="cluster-article-summary">
+                            High-level courts confirm some charges but defer rulings on others, resulting in prolonged uncertainty.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        
+            <div class="expandable-cluster">
+                <div class="cluster-title">Resolution &amp; Charges</div>
+                <div class="cluster-period">2024</div>
+                <div class="cluster-description">
+                    As final agreements are reached, the extradition process nears conclusion. New charges and settlements lead towards a definitive resolution, closing a complex international chapter.
+                </div>
+                <div class="cluster-articles">
+                    <div class="cluster-article">
+                        <div class="cluster-article-title">Final extradition feasibility confirmed</div>
+                        <div class="cluster-article-meta">Date: 10-May-24 | Source: BBC</div>
+                        <div class="cluster-article-summary">
+                            International courts agree on feasible extradition terms, paving the way for conclusive charges and sentencing.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const nodes = document.querySelectorAll('.map-node');
+            const detailSections = document.querySelectorAll('.node-details');
+        
+            nodes.forEach(node => {
+                node.addEventListener('click', () => {
+                    // Hide all details first
+                    detailSections.forEach(section => section.classList.remove('active'));
+                    
+                    // Show the corresponding details
+                    const targetId = node.getAttribute('data-node') + '-details';
+                    const targetSection = document.getElementById(targetId);
+                    if (targetSection) {
+                        targetSection.classList.add('active');
+                        // Scroll smoothly to details section
+                        // targetSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                });
+            });
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const eventMarkers = document.querySelectorAll('.event-marker');
+            
+            eventMarkers.forEach(marker => {
+                marker.addEventListener('click', () => {
+                    // Close any other open markers
+                    eventMarkers.forEach(m => {
+                        if (m !== marker) {
+                            m.classList.remove('active');
+                        }
+                    });
+
+                    // Toggle this marker
+                    marker.classList.toggle('active');
+                });
+            });
+        });
+    </script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // Simple expand/collapse functionality for cluster article details
+        const clusters = document.querySelectorAll('.expandable-cluster');
+        clusters.forEach(cluster => {
+            const articlesContainer = cluster.querySelector('.cluster-articles');
+            if (!articlesContainer) return; // Skip if no articles container
+    
+            // Create a collapse button
+            const collapseBtn = document.createElement('div');
+            collapseBtn.innerText = 'Hide details';
+            collapseBtn.className = 'collapse-button';
+    
+            // Clicking the collapse button hides the articles and the button itself
+            collapseBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                articlesContainer.style.display = 'none';
+                collapseBtn.style.display = 'none';
+            });
+    
+            // Clicking the cluster toggles the articles visibility
+            cluster.addEventListener('click', () => {
+                const isVisible = articlesContainer.style.display === 'block';
+                if (isVisible) {
+                    articlesContainer.style.display = 'none';
+                    collapseBtn.style.display = 'none';
+                } else {
+                    articlesContainer.style.display = 'block';
+                    collapseBtn.style.display = 'inline-block';
+                }
+            });
+    
+            // Initially hide the details and the button
+            articlesContainer.style.display = 'none';
+            collapseBtn.style.display = 'none';
+    
+            // Append the collapse button to the cluster so it appears after expanding
+            cluster.appendChild(collapseBtn);
+        });
+    });
+    </script>
+    
+
+
+
+
+</body>
+</html>

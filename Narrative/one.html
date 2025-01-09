@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Article Patterns Analysis</title>
+    
+    <!-- React Dependencies -->
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.development.js"></script>
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.development.js"></script>
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/prop-types/15.8.1/prop-types.js"></script>
+    
+    <!-- D3 (required for Recharts) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    
+    <!-- Recharts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/recharts/2.10.3/Recharts.min.js"></script>
+    
+    <!-- Babel -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            padding: 20px;
+            background: #f5f5f5;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1, h2, h3 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 40px;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .chart-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 40px;
+            min-height: 400px;
+        }
+
+        .patterns-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .pattern-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .pattern-title {
+            font-weight: bold;
+            color: #ff4646;
+            margin-bottom: 10px;
+        }
+
+        .pattern-value {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .pattern-description {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        @media (max-width: 768px) {
+            .patterns-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Article Patterns & Story Evolution</h1>
+
+        <!-- Article Patterns Overview -->
+        <div class="patterns-grid">
+            <div class="pattern-card">
+                <div class="pattern-title">Main Narrative Peak</div>
+                <div class="pattern-value">April 2024</div>
+                <div class="pattern-description">Highest volume of main narrative coverage</div>
+            </div>
+            <div class="pattern-card">
+                <div class="pattern-title">Counter Narrative Peak</div>
+                <div class="pattern-value">May 2024</div>
+                <div class="pattern-description">Strongest counter-narrative presence</div>
+            </div>
+            <div class="pattern-card">
+                <div class="pattern-title">Overall Sentiment</div>
+                <div class="pattern-value">+0.3</div>
+                <div class="pattern-description">Average sentiment score</div>
+            </div>
+        </div>
+
+        <div id="root"></div>
+    </div>
+
+    <script type="text/babel">
+        const {
+            AreaChart, Area, LineChart, Line, XAxis, YAxis,
+            CartesianGrid, Tooltip, Legend, ResponsiveContainer
+        } = window.Recharts;
+
+        const NarrativeFlow = () => {
+            const data = [
+                { 
+                    date: '2024-01',
+                    mainNarrativeVolume: 100,
+                    counterNarrativeVolume: 20,
+                    sentiment: 0.2,
+                    topicStrength: 45,
+                },
+                { 
+                    date: '2024-02',
+                    mainNarrativeVolume: 150,
+                    counterNarrativeVolume: 40,
+                    sentiment: -0.3,
+                    topicStrength: 65,
+                },
+                { 
+                    date: '2024-03',
+                    mainNarrativeVolume: 300,
+                    counterNarrativeVolume: 80,
+                    sentiment: -0.5,
+                    topicStrength: 85,
+                },
+                { 
+                    date: '2024-04',
+                    mainNarrativeVolume: 450,
+                    counterNarrativeVolume: 200,
+                    sentiment: 0.1,
+                    topicStrength: 95,
+                },
+                { 
+                    date: '2024-05',
+                    mainNarrativeVolume: 380,
+                    counterNarrativeVolume: 250,
+                    sentiment: 0.4,
+                    topicStrength: 75,
+                },
+                { 
+                    date: '2024-06',
+                    mainNarrativeVolume: 280,
+                    counterNarrativeVolume: 180,
+                    sentiment: 0.3,
+                    topicStrength: 60,
+                }
+            ];
+
+            return (
+                <>
+                    <h2>Narrative Evolution Over Time</h2>
+                    <div className="chart-container">
+                        <div style={{ height: '400px' }}>
+                            <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart data={data}>
+                                    <defs>
+                                        <linearGradient id="mainNarrative" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#ff4646" stopOpacity={0.8}/>
+                                            <stop offset="95%" stopColor="#ff4646" stopOpacity={0.2}/>
+                                        </linearGradient>
+                                        <linearGradient id="counterNarrative" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#666666" stopOpacity={0.8}/>
+                                            <stop offset="95%" stopColor="#666666" stopOpacity={0.2}/>
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" />
+                                    <XAxis dataKey="date" />
+                                    <YAxis />
+                                    <Tooltip />
+                                    <Legend />
+                                    <Area 
+                                        type="monotone" 
+                                        dataKey="mainNarrativeVolume" 
+                                        stroke="#ff4646" 
+                                        fillOpacity={1} 
+                                        fill="url(#mainNarrative)" 
+                                        name="Main Narrative Volume"
+                                    />
+                                    <Area 
+                                        type="monotone" 
+                                        dataKey="counterNarrativeVolume" 
+                                        stroke="#666666" 
+                                        fillOpacity={1} 
+                                        fill="url(#counterNarrative)" 
+                                        name="Counter Narrative Volume"
+                                    />
+                                </AreaChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+
+                    <h2>Sentiment and Topic Strength</h2>
+                    <div className="chart-container">
+                        <div style={{ height: '400px' }}>
+                            <ResponsiveContainer width="100%" height="100%">
+                                <LineChart data={data}>
+                                    <CartesianGrid strokeDasharray="3 3" />
+                                    <XAxis dataKey="date" />
+                                    <YAxis yAxisId="left" />
+                                    <YAxis yAxisId="right" orientation="right" />
+                                    <Tooltip />
+                                    <Legend />
+                                    <Line 
+                                        yAxisId="left"
+                                        type="monotone" 
+                                        dataKey="sentiment" 
+                                        stroke="#ff4646" 
+                                        name="Sentiment"
+                                        dot={{ stroke: '#ff4646', strokeWidth: 2, r: 4 }}
+                                    />
+                                    <Line 
+                                        yAxisId="right"
+                                        type="monotone" 
+                                        dataKey="topicStrength" 
+                                        stroke="#666666" 
+                                        name="Topic Strength"
+                                        dot={{ stroke: '#666666', strokeWidth: 2, r: 4 }}
+                                    />
+                                </LineChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+                </>
+            );
+        };
+
+        // Render the app
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<NarrativeFlow />);
+    </script>
+</body>
+</html>
+
+
+

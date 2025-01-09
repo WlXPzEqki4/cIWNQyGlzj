@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Entity Analysis Page</title>
+  <link rel="stylesheet" href="styles.css"> <!-- Link to external CSS -->
+  <style>
+    /* General Reset and Styling */
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+      background-color: #0f172a; /* Dark Blue Background */
+      color: #cbd5e1; /* Light Text Color */
+    }
+
+    h1, h2, h3 {
+      margin: 0;
+      color: #e2e8f0;
+    }
+
+    a {
+      color: #93c5fd;
+      text-decoration: none;
+    }
+
+    /* Container Styling */
+    .container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-gap: 1.5rem;
+      max-width: 1200px;
+      margin: 2rem auto;
+      padding: 1rem;
+    }
+
+    /* Header Section */
+    .header {
+      grid-column: span 2;
+      text-align: left;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid #1e293b;
+    }
+
+    /* Section Boxes */
+    .section-box {
+      background-color: #1e293b;
+      border-radius: 8px;
+      padding: 1.5rem;
+      box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.3);
+    }
+
+    .section-box h3 {
+      color: #93c5fd;
+      margin-bottom: 1rem;
+    }
+
+    .section-box ul {
+      list-style-type: disc;
+      padding-left: 1rem;
+    }
+
+    /* Media Section */
+    .media-section {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .media-image {
+      background-color: #475569;
+      height: 200px;
+      border-radius: 8px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: #94a3b8;
+      font-size: 1.2rem;
+    }
+
+    /* Table Section */
+    .table-section table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .table-section th, .table-section td {
+      padding: 0.75rem;
+      text-align: left;
+      border-bottom: 1px solid #334155;
+    }
+
+    .table-section th {
+      color: #93c5fd;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Main Container -->
+  <div class="container">
+
+    <!-- Header -->
+    <div class="header">
+      <h1>[Entity Type]: [Entity Name]</h1>
+    </div>
+
+    <!-- Section 1 -->
+    <div class="section-box">
+      <h3>☰ [Section Title 1]</h3>
+      <p>[Section Description]</p>
+      <ul>
+        <li>[Key Point 1]</li>
+        <li>[Key Point 2]</li>
+      </ul>
+    </div>
+
+    <!-- Section 2 -->
+    <div class="section-box">
+      <h3>🔗 [Section Title 2]</h3>
+      <p>[Section Description]</p>
+      <ul>
+        <li>[Main Point 1]</li>
+        <li>[Main Point 2]
+          <ul>
+            <li>[Sub-point 1]</li>
+            <li>[Sub-point 2]</li>
+          </ul>
+        </li>
+      </ul>
+    </div>
+
+    <!-- Media Section -->
+    <div class="section-box media-section">
+      <h3>🖼 [Media Section Title]</h3>
+      <div class="media-image">[Image Description 1]</div>
+      <p>[Image Caption 1]</p>
+    </div>
+
+    <div class="section-box media-section">
+      <h3> </h3>
+      <div class="media-image">[Image Description 2]</div>
+      <p>[Image Caption 2]</p>
+    </div>
+
+    <!-- Table Section -->
+    <div class="section-box table-section" style="grid-column: span 2;">
+      <h3>💻 [Platform Information]</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>[Column 1]</th>
+            <th>[Column 2]</th>
+            <th>[Column 3]</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>[Data 1]</td>
+            <td>[Data 2]</td>
+            <td>[Data 3]</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+
+</body>
+</html>

@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Concept Network Test</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <!-- Dependencies -->
+  <script
+    crossorigin
+    src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.development.js">
+  </script>
+  <script
+    crossorigin
+    src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.development.js">
+  </script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+
+  <style>
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      font-family: Arial, sans-serif;
+    }
+    .viz-container {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    // Destructure React hooks in a plain script environment
+    const { useRef, useEffect } = React;
+
+    // 2D Visualization
+    function ConceptNetwork2D() {
+      const svgRef = useRef();
+
+      // Define concept data
+      const nodes = [
+        // Core concepts
+        { id: "COCAINE", group: 1, weight: 0.551048, radius: 40 },
+        { id: "SEIZURE", group: 1, weight: 0.364581, radius: 35 },
+        { id: "INVESTIGATION", group: 2, weight: 0.424509, radius: 30 },
+        { id: "QUANTITY", group: 3, weight: 0.383739, radius: 30 },
+        { id: "METHOD", group: 4, weight: 0.344153, radius: 25 },
+        { id: "LOCATION", group: 5, weight: 0.429805, radius: 25 },
+        
+        // Sub-concepts
+        { id: "tons", group: 3, weight: 0.2, radius: 15 },
+        { id: "kilos", group: 3, weight: 0.2, radius: 15 },
+        { id: "hidden", group: 4, weight: 0.2, radius: 15 },
+        { id: "load", group: 4, weight: 0.2, radius: 15 },
+        { id: "europe", group: 5, weight: 0.2, radius: 15 }
+      ];
+
+      const links = [
+        // Core concept connections
+        { source: "COCAINE", target: "SEIZURE", value: 5 },
+        { source: "COCAINE", target: "QUANTITY", value: 4 },
+        { source: "COCAINE", target: "METHOD", value: 3 },
+        { source: "COCAINE", target: "LOCATION", value: 3 },
+        
+        // Sub-concept connections
+        { source: "QUANTITY", target: "tons", value: 2 },
+        { source: "QUANTITY", target: "kilos", value: 2 },
+        { source: "METHOD", target: "hidden", value: 2 },
+        { source: "METHOD", target: "load", value: 2 },
+        { source: "LOCATION", target: "europe", value: 2 }
+      ];
+
+      useEffect(() => {
+        const width = 800;
+        const height = 600;
+
+        // Clear any existing SVG content
+        d3.select(svgRef.current).selectAll("*").remove();
+
+        // Create the SVG container
+        const svg = d3.select(svgRef.current)
+          .attr("width", width)
+          .attr("height", height);
+
+        // Create force simulation
+        const simulation = d3.forceSimulation(nodes)
+          .force("link", d3.forceLink(links).id(d => d.id))
+          .force("charge", d3.forceManyBody().strength(-400))
+          .force("center", d3.forceCenter(width / 2, height / 2));
+
+        // Create the links
+        const link = svg.append("g")
+          .selectAll("line")
+          .data(links)
+          .join("line")
+          .attr("stroke", "#999")
+          .attr("stroke-opacity", 0.6)
+          .attr("stroke-width", d => Math.sqrt(d.value));
+
+        // Create nodes with different colours based on group
+        const color = d3.scaleOrdinal(d3.schemeCategory10);
+        
+        // Drag functions
+        function drag(simulation) {
+          function dragstarted(event) {
+            if (!event.active) simulation.alphaTarget(0.3).restart();
+            event.subject.fx = event.subject.x;
+            event.subject.fy = event.subject.y;
+          }
+          
+          function dragged(event) {
+            event.subject.fx = event.x;
+            event.subject.fy = event.y;
+          }
+          
+          function dragended(event) {
+            if (!event.active) simulation.alphaTarget(0);
+            event.subject.fx = null;
+            event.subject.fy = null;
+          }
+          
+          return d3.drag()
+            .on("start", dragstarted)
+            .on("drag", dragged)
+            .on("end", dragended);
+        }
+
+        // Create node groups
+        const node = svg.append("g")
+          .selectAll("g")
+          .data(nodes)
+          .join("g")
+          .call(drag(simulation));
+
+        // Add circles to nodes
+        node.append("circle")
+          .attr("r", d => d.radius)
+          .attr("fill", d => color(d.group))
+          .attr("fill-opacity", 0.7);
+
+        // Add labels to nodes
+        node.append("text")
+          .text(d => d.id)
+          .attr("x", 0)
+          .attr("y", d => d.radius + 12)
+          .attr("text-anchor", "middle")
+          .attr("fill", "#333")
+          .style("font-size", "12px");
+
+        // Add titles for hover
+        node.append("title")
+          .text(d => `${d.id}\nWeight: ${d.weight}`);
+
+        // Update positions on each tick
+        simulation.on("tick", () => {
+          link
+            .attr("x1", d => d.source.x)
+            .attr("y1", d => d.source.y)
+            .attr("x2", d => d.target.x)
+            .attr("y2", d => d.target.y);
+
+          node
+            .attr("transform", d => `translate(${d.x},${d.y})`);
+        });
+      }, []);
+
+      return (
+        <div className="w-full h-96 bg-white rounded-lg shadow-lg p-4">
+          <h3 className="text-lg font-semibold mb-4">Narrative 1: Concept Network</h3>
+          <svg ref={svgRef} className="w-full h-full"></svg>
+        </div>
+      );
+    }
+
+    // 3D Visualization
+    function ConceptNetwork3D() {
+      const canvasRef = useRef();
+
+      useEffect(() => {
+        // Define data structure
+        const nodes = [
+          { id: "COCAINE", group: 1, weight: 0.551048, radius: 40, z: 0 },
+          { id: "SEIZURE", group: 1, weight: 0.364581, radius: 35, z: 50 },
+          { id: "INVESTIGATION", group: 2, weight: 0.424509, radius: 30, z: -50 },
+          { id: "QUANTITY", group: 3, weight: 0.383739, radius: 30, z: 25 },
+          { id: "METHOD", group: 4, weight: 0.344153, radius: 25, z: -25 },
+          { id: "LOCATION", group: 5, weight: 0.429805, radius: 25, z: 0 },
+          { id: "tons", group: 3, weight: 0.2, radius: 15, z: 35 },
+          { id: "kilos", group: 3, weight: 0.2, radius: 15, z: 15 },
+          { id: "hidden", group: 4, weight: 0.2, radius: 15, z: -35 },
+          { id: "load", group: 4, weight: 0.2, radius: 15, z: -15 },
+          { id: "europe", group: 5, weight: 0.2, radius: 15, z: 10 }
+        ];
+
+        const links = [
+          { source: "COCAINE", target: "SEIZURE", value: 5 },
+          { source: "COCAINE", target: "QUANTITY", value: 4 },
+          { source: "COCAINE", target: "METHOD", value: 3 },
+          { source: "COCAINE", target: "LOCATION", value: 3 },
+          { source: "QUANTITY", target: "tons", value: 2 },
+          { source: "QUANTITY", target: "kilos", value: 2 },
+          { source: "METHOD", target: "hidden", value: 2 },
+          { source: "METHOD", target: "load", value: 2 },
+          { source: "LOCATION", target: "europe", value: 2 }
+        ];
+
+        const width = 800;
+        const height = 600;
+        const depth = 400;
+
+        // Custom force to maintain z-positions
+        function customZForce() {
+          let n;
+          let strength = 0.1;
+
+          function force(alpha) {
+            n.forEach(node => {
+              // Move node towards its target z
+              const targetZ = node.z || 0;
+              const dz = targetZ - (node.currentZ || 0);
+              node.currentZ = (node.currentZ || 0) + dz * strength * alpha;
+            });
+          }
+
+          force.initialize = nodes => {
+            n = nodes;
+            nodes.forEach(node => {
+              node.currentZ = node.z || 0;
+            });
+          };
+
+          force.strength = value => {
+            if (!arguments.length) return strength;
+            strength = value;
+            return force;
+          };
+
+          return force;
+        }
+
+        // Set up simulation
+        const simulation = d3.forceSimulation(nodes)
+          .force("link", d3.forceLink(links).id(d => d.id))
+          .force("charge", d3.forceManyBody().strength(-400))
+          .force("center", d3.forceCenter(width / 2, height / 2))
+          .force("custom-z", customZForce());
+
+        // Prepare canvas
+        const canvas = d3.select(canvasRef.current)
+          .attr("width", width)
+          .attr("height", height);
+
+        const context = canvas.node().getContext("2d");
+
+        // Colour scale
+        const color = d3.scaleOrdinal(d3.schemeCategory10);
+
+        // Animation
+        let angle = 0;
+        function animate() {
+          context.clearRect(0, 0, width, height);
+          context.save();
+          context.translate(width / 2, height / 2);
+
+          // Slowly rotate around the Y-axis
+          angle += 0.002;
+          const cos = Math.cos(angle);
+          const sin = Math.sin(angle);
+
+          // Sort nodes by z for rendering from back to front
+          const sortedNodes = [...nodes].sort((a, b) => (b.currentZ || 0) - (a.currentZ || 0));
+
+          // Draw links
+          links.forEach(link => {
+            const source = link.source;
+            const target = link.target;
+            // Project 3D to 2D
+            const sx = source.x * cos - (source.currentZ || 0) * sin;
+            const tx = target.x * cos - (target.currentZ || 0) * sin;
+
+            context.beginPath();
+            context.moveTo(sx - width/2, source.y - height/2);
+            context.lineTo(tx - width/2, target.y - height/2);
+            context.strokeStyle = "#999";
+            context.stroke();
+          });
+
+          // Draw nodes
+          sortedNodes.forEach(node => {
+            const x3D = node.x * cos - (node.currentZ || 0) * sin;
+            const z3D = (node.currentZ || 0) * cos + node.x * sin;
+
+            // Scale node size by depth
+            const scale = 0.5 + (z3D + depth/2) / depth;
+
+            context.beginPath();
+            context.arc(
+              x3D - width/2,
+              node.y - height/2,
+              node.radius * scale,
+              0,
+              2 * Math.PI
+            );
+            context.fillStyle = color(node.group);
+            context.fill();
+
+            // Draw labels (optional, but included here)
+            context.fillStyle = "#333";
+            context.font = `${12 * scale}px Arial`;
+            context.textAlign = "center";
+            context.fillText(
+              node.id,
+              x3D - width/2,
+              node.y - height/2 + node.radius * scale + 12
+            );
+          });
+
+          context.restore();
+          requestAnimationFrame(animate);
+        }
+
+        // Kick off the animation
+        animate();
+
+        // Constrain node movement
+        simulation.on("tick", () => {
+          nodes.forEach(node => {
+            node.x = Math.max(node.radius, Math.min(width - node.radius, node.x));
+            node.y = Math.max(node.radius, Math.min(height - node.radius, node.y));
+            node.currentZ = Math.max(-depth/2, Math.min(depth/2, node.currentZ || 0));
+          });
+        });
+
+        // Cleanup on unmount
+        return () => {
+          simulation.stop();
+        };
+      }, []);
+
+      return (
+        <div className="w-full h-96 bg-white rounded-lg shadow-lg p-4">
+          <h3 className="text-lg font-semibold mb-4">Narrative 1: 3D Concept Network</h3>
+          <canvas ref={canvasRef} className="w-full h-full"></canvas>
+        </div>
+      );
+    }
+
+    // Main App
+    function App() {
+      return (
+        <div className="container">
+          <h1>Narrative Concept Visualisations</h1>
+          <div className="viz-container">
+            <ConceptNetwork2D />
+          </div>
+          <div className="viz-container">
+            <ConceptNetwork3D />
+          </div>
+        </div>
+      );
+    }
+
+    // Render the app
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>

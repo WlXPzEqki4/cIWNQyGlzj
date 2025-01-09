@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Narrative Analysis Dashboard</title>
+    
+    <!-- React Dependencies -->
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.development.js"></script>
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.development.js"></script>
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/prop-types/15.8.1/prop-types.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/recharts/2.10.3/Recharts.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            padding: 20px;
+            background: #f5f5f5;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1, h2, h3 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 40px;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .chart-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 40px;
+            min-height: 400px;
+        }
+
+        @media (max-width: 768px) {
+            .patterns-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>Narrative Analysis Visualisations (Updated Data, Revised)</h1>
+    <div id="root"></div>
+</div>
+
+<script type="text/babel">
+
+const {
+  CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+  XAxis, YAxis, LineChart, Line, BarChart, Bar, ComposedChart,
+  // Add these two lines:
+  AreaChart, 
+  Area
+} = Recharts;
+
+
+    const narrativeColors = {
+        narrative1: "#ff4646",
+        narrative2: "#4666ff",
+        narrative3: "#46af46",
+        narrative5: "#ff8c46"
+    };
+
+    // Updated data
+    const rawData = [
+        { article_id:1, narrative_id:"P1", date:"17-Mar-22", strength_score:0.7972 },
+        { article_id:1, narrative_id:"P2", date:"17-Mar-22", strength_score:1.4956 },
+        { article_id:2, narrative_id:"P1", date:"13-Jun-22", strength_score:0.9697 },
+        { article_id:2, narrative_id:"P2", date:"13-Jun-22", strength_score:1.1452 },
+        { article_id:2, narrative_id:"P3", date:"13-Jun-22", strength_score:1.0401 },
+        { article_id:3, narrative_id:"P1", date:"13-Jun-22", strength_score:1.05 },
+        { article_id:3, narrative_id:"P2", date:"13-Jun-22", strength_score:0.6222 },
+        { article_id:3, narrative_id:"P3", date:"13-Jun-22", strength_score:1.534 },
+        { article_id:3, narrative_id:"P5", date:"13-Jun-22", strength_score:0.2411 },
+        { article_id:4, narrative_id:"P2", date:"14-Jun-22", strength_score:1.5764 },
+        { article_id:4, narrative_id:"P3", date:"14-Jun-22", strength_score:1.0401 },
+        { article_id:5, narrative_id:"P2", date:"20-Jun-22", strength_score:1.4956 },
+        { article_id:5, narrative_id:"P3", date:"20-Jun-22", strength_score:1.0401 },
+        { article_id:6, narrative_id:"P1", date:"22-Jun-22", strength_score:0.763 },
+        { article_id:6, narrative_id:"P2", date:"22-Jun-22", strength_score:2.0186 },
+        { article_id:6, narrative_id:"P3", date:"22-Jun-22", strength_score:1.534 },
+        { article_id:6, narrative_id:"P5", date:"22-Jun-22", strength_score:0.3211 },
+        { article_id:7, narrative_id:"P1", date:"12-Jun-22", strength_score:1.05 },
+        { article_id:7, narrative_id:"P2", date:"12-Jun-22", strength_score:1.1452 },
+        { article_id:7, narrative_id:"P3", date:"12-Jun-22", strength_score:1.0401 },
+        { article_id:8, narrative_id:"P1", date:"27-Jun-22", strength_score:0.3442 },
+        { article_id:8, narrative_id:"P2", date:"27-Jun-22", strength_score:1.4956 },
+        { article_id:8, narrative_id:"P3", date:"27-Jun-22", strength_score:1.534 },
+        { article_id:8, narrative_id:"P5", date:"27-Jun-22", strength_score:0.2411 },
+        { article_id:9, narrative_id:"P1", date:"11-Jul-22", strength_score:0.4245 },
+        { article_id:9, narrative_id:"P2", date:"11-Jul-22", strength_score:1.1452 },
+        { article_id:9, narrative_id:"P3", date:"11-Jul-22", strength_score:1.534 },
+        { article_id:10, narrative_id:"P1", date:"18-Jul-22", strength_score:0.3442 },
+        { article_id:10, narrative_id:"P2", date:"18-Jul-22", strength_score:1.0644 },
+        { article_id:10, narrative_id:"P3", date:"18-Jul-22", strength_score:1.534 },
+        { article_id:11, narrative_id:"P1", date:"3-Nov-22", strength_score:0.3442 },
+        { article_id:11, narrative_id:"P2", date:"3-Nov-22", strength_score:1.1452 },
+        { article_id:11, narrative_id:"P3", date:"3-Nov-22", strength_score:1.0401 },
+        { article_id:12, narrative_id:"P1", date:"15-Dec-22", strength_score:0.3442 },
+        { article_id:12, narrative_id:"P2", date:"15-Dec-22", strength_score:1.1452 },
+        { article_id:12, narrative_id:"P3", date:"15-Dec-22", strength_score:1.534 },
+        { article_id:13, narrative_id:"P1", date:"30-Jan-23", strength_score:0.7087 },
+        { article_id:13, narrative_id:"P2", date:"30-Jan-23", strength_score:1.1452 },
+        { article_id:13, narrative_id:"P3", date:"30-Jan-23", strength_score:1.0401 },
+        { article_id:14, narrative_id:"P1", date:"20-Nov-23", strength_score:0.7891 },
+        { article_id:14, narrative_id:"P2", date:"20-Nov-23", strength_score:2.0186 },
+        { article_id:14, narrative_id:"P3", date:"20-Nov-23", strength_score:1.0401 },
+        { article_id:15, narrative_id:"P1", date:"20-Nov-23", strength_score:0.7087 },
+        { article_id:15, narrative_id:"P2", date:"20-Nov-23", strength_score:1.1452 },
+        { article_id:15, narrative_id:"P3", date:"20-Nov-23", strength_score:1.0401 },
+        { article_id:16, narrative_id:"P1", date:"22-Nov-23", strength_score:0.7891 },
+        { article_id:16, narrative_id:"P2", date:"22-Nov-23", strength_score:2.0186 },
+        { article_id:16, narrative_id:"P3", date:"22-Nov-23", strength_score:1.0401 },
+        { article_id:17, narrative_id:"P1", date:"1-Dec-23", strength_score:0.4245 },
+        { article_id:17, narrative_id:"P3", date:"1-Dec-23", strength_score:1.0401 },
+        { article_id:18, narrative_id:"P1", date:"4-Feb-24", strength_score:0.7891 },
+        { article_id:18, narrative_id:"P2", date:"4-Feb-24", strength_score:1.1452 },
+        { article_id:19, narrative_id:"P1", date:"19-Aug-24", strength_score:0.6312 },
+        { article_id:19, narrative_id:"P2", date:"19-Aug-24", strength_score:1.0644 },
+        { article_id:19, narrative_id:"P3", date:"19-Aug-24", strength_score:1.0401 },
+        { article_id:19, narrative_id:"P5", date:"19-Aug-24", strength_score:0.3174 },
+        { article_id:20, narrative_id:"P2", date:"1-Oct-24", strength_score:1.4956 },
+        { article_id:20, narrative_id:"P5", date:"1-Oct-24", strength_score:0.2804 }
+    ];
+
+    // Map narrative_id to internal keys
+    function mapNarrative(nid) {
+        switch(nid) {
+            case "P1": return "narrative1";
+            case "P2": return "narrative2";
+            case "P3": return "narrative3";
+            case "P5": return "narrative5";
+            default: return ""; 
+        }
+    }
+
+    const allArticles = rawData.map(d => ({
+        ...d,
+        narrative: mapNarrative(d.narrative_id)
+    }));
+
+    // Get unique dates sorted
+    const uniqueDates = Array.from(new Set(allArticles.map(d=>d.date))).sort((a,b)=>new Date(a)-new Date(b));
+
+    // Aggregate data by date and narrative to find average strength per date
+    function aggregateByDateNarrative(data) {
+        const map = {};
+        data.forEach(d => {
+            const key = d.date + "-" + d.narrative;
+            if(!map[key]) {
+                map[key] = { date: d.date, narrative: d.narrative, sum: 0, count: 0 };
+            }
+            map[key].sum += d.strength_score;
+            map[key].count += 1;
+        });
+
+        // Convert to array and compute average
+        return Object.values(map).map(v => ({
+            date: v.date,
+            narrative: v.narrative,
+            strength: v.sum / v.count
+        }));
+    }
+
+    const aggregated = aggregateByDateNarrative(allArticles);
+
+    // Prepare data for LineChart (1): Cross-Narrative Timeline View
+    // We want a line per narrative showing how average strength evolves
+    // We'll create one data array with one object per date, and keys for each narrative
+    const narratives = ["narrative1","narrative2","narrative3","narrative5"];
+    function reshapeForLinePlot(aggData, dates, narratives) {
+        const dateMap = {};
+        dates.forEach(d => {
+            dateMap[d] = { date: d };
+        });
+
+        aggData.forEach(item => {
+            dateMap[item.date][item.narrative] = item.strength;
+        });
+
+        // Ensure no undefined: set to 0 if missing
+        Object.values(dateMap).forEach(obj => {
+            narratives.forEach(n => {
+                if(obj[n] === undefined) obj[n] = 0;
+            });
+        });
+
+        return Object.values(dateMap);
+    }
+
+    const lineData = reshapeForLinePlot(aggregated, uniqueDates, narratives);
+
+    // Prepare data for grouped BarChart (2): Narrative Strength Comparison
+    const barData = lineData;
+
+    // 3) Narrative Correlation Analysis (already done as stacked chart).
+    // We'll count how many articles per narrative appear each date:
+    function getStackedData(data, dates) {
+        const dateNMap = {};
+        dates.forEach(d => {
+            dateNMap[d] = {
+                date: d,
+                narrative1: 0,
+                narrative2: 0,
+                narrative3: 0,
+                narrative5: 0
+            };
+        });
+        const articlesById = {};
+        data.forEach(a => {
+            if(!articlesById[a.article_id]) {
+                articlesById[a.article_id] = { date: a.date, narratives: new Set() };
+            }
+            articlesById[a.article_id].narratives.add(a.narrative);
+        });
+
+        for (let id in articlesById) {
+            const rec = articlesById[id];
+            rec.narratives.forEach(n => {
+                dateNMap[rec.date][n]++;
+            });
+        }
+        return Object.values(dateNMap);
+    }
+
+    const stackedData = getStackedData(allArticles, uniqueDates);
+
+    // 4) Average Strength per Narrative chart
+    function averageStrengthByNarrative(data) {
+        const nMap = {};
+        data.forEach(d => {
+            if(!nMap[d.narrative]) {
+                nMap[d.narrative] = { sum: 0, count: 0 };
+            }
+            nMap[d.narrative].sum += d.strength_score;
+            nMap[d.narrative].count += 1;
+        });
+        return Object.keys(nMap).map(n => ({
+            narrative: n,
+            avg_strength: nMap[n].sum / nMap[n].count
+        }));
+    }
+
+    const avgStrengthData = averageStrengthByNarrative(allArticles);
+
+    // Custom Tooltip
+    const CustomTooltip = ({ active, payload }) => {
+        if (active && payload && payload.length) {
+            const data = payload[0].payload;
+            return (
+                <div style={{ backgroundColor: 'white', padding: '10px', border: '1px solid #ccc' }}>
+                    {data.date && <p>Date: {data.date}</p>}
+                    {payload.map((p,i) => (
+                        <p key={i}>{p.name}: {p.value.toFixed(4)}</p>
+                    ))}
+                </div>
+            );
+        }
+        return null;
+    };
+
+    const NewVisualizations = () => {
+        return (
+            <>
+                <h1>Cross-Narrative Timeline View</h1>
+                <div className="chart-container">
+                    <ResponsiveContainer width="100%" height={400}>
+                        <LineChart data={lineData} margin={{ top: 20, right: 20, bottom: 40, left: 20 }}>
+                            <CartesianGrid strokeDasharray="3 3"/>
+                            <XAxis dataKey="date" />
+                            <YAxis domain={[0, 2.1]} />
+                            <Tooltip content={<CustomTooltip />} />
+                            <Legend />
+                            {narratives.map(n => (
+                                <Line
+                                    key={n}
+                                    type="monotone"
+                                    dataKey={n}
+                                    stroke={narrativeColors[n]}
+                                    activeDot={{ r: 8 }}
+                                    name={n}
+                                />
+                            ))}
+                        </LineChart>
+                    </ResponsiveContainer>
+                </div>
+
+                {/* Duplicated chart: Cross-Narrative Timeline View with Gradient */}
+                <h1>Cross-Narrative Timeline View (Gradient Fill)</h1>
+                <div className="chart-container">
+                    <ResponsiveContainer width="100%" height={400}>
+                        <AreaChart data={lineData} margin={{ top: 20, right: 20, bottom: 40, left: 20 }}>
+    <defs>
+      {Object.entries(narrativeColors).map(([key, color]) => (
+        <linearGradient key={key} id={key} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="5%" stopColor={color} stopOpacity={0.8} />
+          <stop offset="95%" stopColor={color} stopOpacity={0} />
+        </linearGradient>
+      ))}
+    </defs>
+
+    <CartesianGrid strokeDasharray="3 3" />
+    <XAxis dataKey="date" />
+    <YAxis domain={[0, 2.1]} />
+    <Tooltip />
+    <Legend />
+
+    {narratives.map(n => (
+      <Area
+        key={n}
+        type="monotone"
+        dataKey={n}
+        stroke={narrativeColors[n]}
+        fill={`url(#${n})`}
+        fillOpacity={0.6}
+        name={n}
+        // optional extras:
+        // dot={false}
+        // isAnimationActive={false}
+      />
+    ))}
+  </AreaChart>
+                    </ResponsiveContainer>
+                </div>
+
+                <h1>Narrative Strength Comparison</h1>
+                <div className="chart-container">
+                    <ResponsiveContainer width="100%" height={400}>
+                        <BarChart data={barData} margin={{ top: 20, right: 20, bottom: 40, left: 20 }}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="date" />
+                            <YAxis domain={[0,2.1]} />
+                            <Tooltip content={<CustomTooltip />} />
+                            <Legend />
+                            <Bar dataKey="narrative1" fill={narrativeColors.narrative1} name="N1"/>
+                            <Bar dataKey="narrative2" fill={narrativeColors.narrative2} name="N2"/>
+                            <Bar dataKey="narrative3" fill={narrativeColors.narrative3} name="N3"/>
+                            <Bar dataKey="narrative5" fill={narrativeColors.narrative5} name="N5"/>
+                        </BarChart>
+                    </ResponsiveContainer>
+                </div>
+
+                <h1>Narrative Correlation Analysis</h1>
+                <div className="chart-container">
+                    <ResponsiveContainer width="100%" height={400}>
+                        <ComposedChart data={stackedData} margin={{ top: 20, right: 20, bottom: 40, left: 20 }}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="date" />
+                            <YAxis allowDecimals={false} />
+                            <Tooltip />
+                            <Legend />
+                            <Bar dataKey="narrative1" stackId="a" fill={narrativeColors.narrative1} name="N1"/>
+                            <Bar dataKey="narrative2" stackId="a" fill={narrativeColors.narrative2} name="N2"/>
+                            <Bar dataKey="narrative3" stackId="a" fill={narrativeColors.narrative3} name="N3"/>
+                            <Bar dataKey="narrative5" stackId="a" fill={narrativeColors.narrative5} name="N5"/>
+                        </ComposedChart>
+                    </ResponsiveContainer>
+                    <p style={{textAlign:'center'}}>
+                        Dates with multiple narratives stacked show co-occurrence. Larger stacks = higher correlation.
+                    </p>
+                </div>
+
+                <h1>Overall Narrative Strength Comparison</h1>
+                <div className="chart-container">
+                    <ResponsiveContainer width="100%" height={400}>
+                        <BarChart data={avgStrengthData} margin={{ top: 20, right: 20, bottom: 40, left: 20 }}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis 
+                                dataKey="narrative" 
+                                tickFormatter={(val) => val.replace('narrative', 'N')} 
+                            />
+                            <YAxis domain={[0, 2.1]} />
+                            <Tooltip 
+                                formatter={(val) => [val.toFixed(4), "Average Strength"]} 
+                            />
+                            <Legend />
+                            <Bar
+                                dataKey="avg_strength"
+                                name="Avg Strength"
+                                shape={(props) => {
+                                    const { x, y, width, height, payload } = props;
+                                    return (
+                                        <rect
+                                            x={x}
+                                            y={y}
+                                            width={width}
+                                            height={height}
+                                            fill={narrativeColors[payload.narrative]} 
+                                        />
+                                    );
+                                }}
+                            />
+                        </BarChart>
+                    </ResponsiveContainer>
+                    <p style={{ textAlign: 'center' }}>
+                        This chart shows which narrative tends to have the highest average strength overall.
+                    </p>
+                </div>
+            </>
+        );
+    };
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<NewVisualizations />);
+</script>
+</body>
+</html>
